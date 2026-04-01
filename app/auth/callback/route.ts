@@ -28,6 +28,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
+    if (error) {
+      return NextResponse.redirect(
+        `${origin}/login?error=${encodeURIComponent(error.message)}`
+      );
+    }
+
     if (!error) {
       // Determine whether this user has completed onboarding
       const {
