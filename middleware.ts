@@ -30,15 +30,3 @@ export const config = {
   ],
 };
 
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico (favicon)
-     * - public files with extensions (images, fonts, etc.)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|ico)$).*)",
-  ],
-};
