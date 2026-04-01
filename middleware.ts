@@ -1,18 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
-
-  // If a Supabase auth code lands on any route other than /auth/callback,
-  // redirect it there — forward ALL search params to preserve PKCE state.
-  const code = searchParams.get("code");
-  if (code && pathname !== "/auth/callback") {
-    const callbackUrl = request.nextUrl.clone();
-    callbackUrl.pathname = "/auth/callback";
-    return NextResponse.redirect(callbackUrl);
-  }
-
   return await updateSession(request);
 }
 
