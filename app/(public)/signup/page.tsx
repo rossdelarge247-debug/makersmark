@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { signInWithGoogle, signUpWithPassword } from "@/lib/supabase/auth-actions";
+import { signUpWithPassword } from "@/lib/supabase/auth-actions";
+import { createClient } from "@/lib/supabase/client";
 import { Mail, Lock, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 // ── Google OAuth button ───────────────────────────────────────────────────────
@@ -12,7 +13,13 @@ function GoogleOAuthButton() {
 
   async function handleClick() {
     setPending(true);
-    await signInWithGoogle();
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
     setPending(false);
   }
 
