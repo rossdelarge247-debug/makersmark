@@ -468,7 +468,7 @@ export default function OverviewMode({
   const [stepNotesExpanded, setStepNotesExpanded] = useState<Set<string>>(new Set());
 
   // ---- Service moment column management ----
-  const [deletingColId, setDeletingColId] = useState<string | null>(null);
+  const [deleteColConfirm, setDeleteColConfirm] = useState<ColumnDef | null>(null);
   const [colActionBusy, setColActionBusy] = useState(false);
   const [hoveredColId, setHoveredColId] = useState<string | null>(null);
 
@@ -880,7 +880,7 @@ export default function OverviewMode({
     setColActionBusy(true);
     const stepIds = col.steps.map((s) => s.id);
     await supabase.from("steps").delete().in("id", stepIds);
-    setDeletingColId(null);
+    setDeleteColConfirm(null);
     setColActionBusy(false);
     window.location.reload();
   }
@@ -1236,65 +1236,11 @@ export default function OverviewMode({
                       </span>
                     )}
 
-                    {/* Column controls — move left / delete / move right */}
-                    {(
-                      <div
-                        className="mt-2 pt-1.5 border-t border-neutral-200 flex items-center justify-between transition-opacity duration-150"
-                        style={{ opacity: hoveredColId === col.id || deletingColId === col.id ? 1 : 0 }}
-                      >
-                        {/* Move left */}
-                        <button
-                          disabled={i === 0 || colActionBusy}
-                          onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "left"); }}
-                          className="inline-flex items-center gap-0.5 text-[10px] text-neutral-400 hover:text-neutral-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1 py-0.5 rounded hover:bg-neutral-100"
-                          title="Move left"
-                        >
-                          <ArrowLeft className="w-2.5 h-2.5" />
-                        </button>
-
-                        {/* Delete */}
-                        {deletingColId === col.id ? (
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              disabled={colActionBusy}
-                              onClick={() => deleteColumn(col)}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
-                            >
-                              {colActionBusy ? "…" : "Delete"}
-                            </button>
-                            <button
-                              onClick={() => setDeletingColId(null)}
-                              className="text-[9px] text-neutral-400 hover:text-neutral-600 px-1"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletingColId(col.id); }}
-                            className="text-[10px] text-neutral-300 hover:text-red-400 px-1 py-0.5 rounded hover:bg-red-50 transition-colors"
-                            title="Delete column"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
-                        )}
-
-                        {/* Move right */}
-                        <button
-                          disabled={i === columns.length - 1 || colActionBusy}
-                          onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "right"); }}
-                          className="inline-flex items-center gap-0.5 text-[10px] text-neutral-400 hover:text-neutral-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1 py-0.5 rounded hover:bg-neutral-100"
-                          title="Move right"
-                        >
-                          <ArrowRight className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    )}
-
                     {/* Per-step chevron — appears on hover when notes exist */}
                     {stepNotes.length > 0 && (
                       <div
-                        className="flex justify-center mt-1 opacity-0 group-hover/steph:opacity-100 transition-opacity"
+                        className="flex justify-center mt-1.5 transition-opacity duration-150"
+                        style={{ opacity: hoveredColId === col.id ? 1 : 0 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setStepNotesExpanded((prev) => {
@@ -1305,10 +1251,42 @@ export default function OverviewMode({
                         }}
                       >
                         <ChevronDown
-                          className={`w-3 h-3 text-neutral-300 hover:text-neutral-500 transition-transform duration-200 ${showStepNotes ? "rotate-180" : ""}`}
+                          className={`w-4 h-4 text-neutral-500 hover:text-neutral-800 transition-transform duration-200 ${showStepNotes ? "rotate-180" : ""}`}
                         />
                       </div>
                     )}
+
+                    {/* Column controls — move left / delete / move right */}
+                    <div
+                      className="mt-1.5 pt-1.5 border-t border-neutral-200 flex items-center justify-between transition-opacity duration-150"
+                      style={{ opacity: hoveredColId === col.id ? 1 : 0 }}
+                    >
+                      <button
+                        disabled={i === 0 || colActionBusy}
+                        onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "left"); }}
+                        className="p-1 rounded text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        title="Move left"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteColConfirm(col); }}
+                        className="p-1 rounded text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Delete column"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        disabled={i === columns.length - 1 || colActionBusy}
+                        onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "right"); }}
+                        className="p-1 rounded text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        title="Move right"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
 
                     {/* Inline step note cards — slide down */}
                     <div
@@ -1574,6 +1552,40 @@ export default function OverviewMode({
             </div>
           )}
           <p className="text-[9px] text-neutral-300 mt-1.5 truncate">{dragging.swimlane.name}</p>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Delete column confirm modal */}
+      {/* ------------------------------------------------------------------ */}
+      {deleteColConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-base font-semibold text-neutral-900 mb-1">Delete column?</h3>
+            <p className="text-sm text-neutral-600 mb-1">
+              <span className="font-medium">{deleteColConfirm.title}</span>
+            </p>
+            <p className="text-xs text-neutral-400 mb-5">
+              This will permanently delete {deleteColConfirm.steps.length} step{deleteColConfirm.steps.length !== 1 ? "s" : ""} and all their cell content. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { deleteColumn(deleteColConfirm); setDeleteColConfirm(null); }}
+                disabled={colActionBusy}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {colActionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleteColConfirm(null)}
+                disabled={colActionBusy}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
