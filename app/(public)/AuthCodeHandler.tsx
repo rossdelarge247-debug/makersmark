@@ -38,5 +38,20 @@ export default function AuthCodeHandler() {
     }, 200);
   }, [router]);
 
+  // Show a full-screen loader while processing the auth redirect
+  // to prevent the landing page flashing beneath
+  if (typeof window !== "undefined" &&
+    (window.location.hash.includes("access_token") ||
+     window.location.search.includes("code="))) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-neutral-500">Signing you in…</p>
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
