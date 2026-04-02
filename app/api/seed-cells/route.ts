@@ -6,6 +6,23 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export async function POST(req: Request) {
   const { blueprint, steps, swimlanes } = await req.json();
 
+  // Build actor role context string
+  const actorRoles: Record<string, string> = blueprint.actor_roles ?? {};
+  const primaryUser: string = blueprint.primary_user || "Customer";
+  actorRoles[primaryUser.toLowerCase()] = "customer";
+
+  const actorRoleLines = Object.entries(actorRoles)
+    .map(([name, role]) => {
+      const label =
+        role === "customer"
+          ? "external customer/user — actions go in User actions row"
+          : role === "frontstage"
+          ? "frontstage staff — customer-facing, actions go in Frontstage actions row"
+          : "backstage staff — not visible to customer, actions go in Backstage actions row";
+      return `- "${name}": ${label}`;
+    })
+    .join("\n");
+
   const swimlaneList = swimlanes
     .map((s: { name: string }, i: number) => `${i}: ${s.name}`)
     .join("\n");
@@ -25,6 +42,9 @@ Blueprint context:
 - Scenario: ${blueprint.scenario || "not specified"}
 - End condition: ${blueprint.end_condition || "not specified"}
 
+Actor roles (IMPORTANT — use these to determine which swimlane row each actor's actions belong in):
+${actorRoleLines || "- All non-primary actors: use context to infer frontstage or backstage"}
+
 Journey steps (in order):
 ${stepList}
 
@@ -34,12 +54,14 @@ ${swimlaneList}
 For each step, generate concise cell content (a short phrase or 1–2 sentences) for each swimlane layer where it is meaningfully relevant.
 
 Layer guidance:
-- "Physical / digital evidence": The tangible touchpoints the user sees or receives at this step — screen confirmations, paper forms, receipts, emails, SMS notifications, signage. Infer these from the step's location (e.g. "online portal" → confirmation screen; "phone call" → call transcript / hold music; "branch" → paper form, counter receipt). Be specific to the channel.
-- "User actions": What the user/customer actively does at this step
-- "Frontstage actions": What staff or systems the user directly sees or interacts with
-- "Backstage actions": Behind-the-scenes staff work the user doesn't see
-- "Support processes / systems": Technology, tools, databases, or processes enabling this step
-- For custom swimlanes: use the swimlane name as context to infer relevant content
+- "Physical / digital evidence": Tangible touchpoints the customer sees/receives — screen confirmations, paper forms, receipts, emails, SMS, signage. Infer from step location (e.g. "online portal" → confirmation screen; "phone call" → hold music, verbal confirmation; "branch" → paper form, receipt).
+- "User actions": What the PRIMARY USER / CUSTOMER does at this step. Only use actors whose role is "customer".
+- "Frontstage actions": What FRONTSTAGE staff or systems do — things the customer directly sees or interacts with. Only use actors whose role is "frontstage". If no frontstage actor is present at this step, describe the customer-facing system/interface instead.
+- "Backstage actions": What BACKSTAGE staff do — invisible to the customer. Only use actors whose role is "backstage". If no backstage actor is present at this step, leave this cell empty rather than guess.
+- "Support processes / systems": Technology, tools, databases, or processes enabling this step — regardless of actor.
+- For custom swimlanes: use the swimlane name as context to infer relevant content.
+
+CRITICAL: Do not place a backstage actor's actions in the User actions or Frontstage rows, and vice versa. Use the actor roles above to assign content to the correct row.
 
 Only include cells with genuinely meaningful content. Skip a cell rather than write something generic.
 

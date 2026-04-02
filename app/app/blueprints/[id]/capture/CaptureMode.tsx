@@ -321,6 +321,13 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   const [showAddActor, setShowAddActor] = useState(false);
   const [scrollTrigger, setScrollTrigger] = useState(0);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
+  const [newActorRole, setNewActorRole] = useState<"frontstage" | "backstage" | null>(null);
+  const [actorRoles, setActorRoles] = useState<Record<string, "customer" | "frontstage" | "backstage">>({
+    ...(blueprint.actor_roles ?? {}),
+    ...(blueprint.primary_user?.trim()
+      ? { [blueprint.primary_user.trim().toLowerCase()]: "customer" as const }
+      : {}),
+  });
 
   const [capture, setCapture] = useState<CaptureState>({
     actor: blueprint.primary_user?.trim() || "",
@@ -341,6 +348,9 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   // Derived
   const knownActors = getUniqueActors(steps, blueprint.primary_user);
   const primaryUser = blueprint.primary_user?.trim() || "";
+  const knownLocations: string[] = Array.from(
+    new Set(steps.map((s) => s.location?.trim()).filter(Boolean) as string[])
+  );
 
   // ---- Focus management ----
   useEffect(() => {
@@ -383,6 +393,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     });
     setAddActorInput("");
     setShowAddActor(false);
+    setNewActorRole(null);
     setPhase("actor");
     setPhaseVisible(true);
     setIsCapturing(true);
@@ -423,6 +434,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     });
     setAddActorInput("");
     setShowAddActor(false);
+    setNewActorRole(null);
     setPhase("actor");
     setPhaseVisible(true);
     setIsCapturing(true);
@@ -462,10 +474,21 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
         ? addActorInput.trim()
         : capture.actor;
 
+    // Persist role for new actors
+    if (showAddActor && addActorInput.trim() && newActorRole) {
+      const updated = { ...actorRoles, [finalActor.toLowerCase()]: newActorRole };
+      setActorRoles(updated);
+      supabase
+        .from("blueprints")
+        .update({ actor_roles: updated, updated_at: new Date().toISOString() })
+        .eq("id", blueprint.id);
+    }
+
     transitionPhase("location", () => {
       setCapture((prev) => ({ ...prev, actor: finalActor }));
       setShowAddActor(false);
       setAddActorInput("");
+      setNewActorRole(null);
     });
   }
 
@@ -847,29 +870,67 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                     )}
                   </div>
 
-                  {/* Inline new actor input */}
+                  {/* Inline new actor input + role selector */}
                   {showAddActor && (
                     <div className="mb-6">
                       <input
                         ref={addActorInputRef}
                         type="text"
                         value={addActorInput}
-                        onChange={(e) => setAddActorInput(e.target.value)}
+                        onChange={(e) => {
+                          setAddActorInput(e.target.value);
+                          setNewActorRole(null);
+                        }}
                         onKeyDown={handleAddActorKeyDown}
                         placeholder="e.g. Support agent, Case worker…"
                         className="w-full bg-transparent text-lg text-neutral-800 placeholder:text-neutral-300 focus:outline-none border-b-2 border-neutral-200 focus:border-primary-400 transition-colors duration-200 pb-3"
                       />
+
+                      {/* Role selector — appears once name is typed */}
+                      {addActorInput.trim() && (
+                        <div className="mt-5">
+                          <p className="text-xs font-medium text-neutral-500 mb-3">
+                            Are they customer-facing or behind the scenes?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setNewActorRole("frontstage")}
+                              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                                newActorRole === "frontstage"
+                                  ? "bg-primary-600 text-white shadow-sm"
+                                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                              }`}
+                            >
+                              👁 Frontstage
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewActorRole("backstage")}
+                              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                                newActorRole === "backstage"
+                                  ? "bg-primary-600 text-white shadow-sm"
+                                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                              }`}
+                            >
+                              🔧 Backstage
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => {
                           setShowAddActor(false);
                           setAddActorInput("");
+                          setNewActorRole(null);
                           setCapture((prev) => ({
                             ...prev,
                             actor: primaryUser,
                           }));
                         }}
-                        className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+                        className="mt-4 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
                       >
                         ← Back to selection
                       </button>
@@ -882,7 +943,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                       onClick={handleActorNext}
                       disabled={
                         showAddActor
-                          ? !addActorInput.trim()
+                          ? !addActorInput.trim() || !newActorRole
                           : !capture.actor
                       }
                       className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -925,9 +986,38 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                   <h2 className="text-3xl font-bold text-neutral-900 mb-2 leading-tight">
                     Where is this happening?
                   </h2>
-                  <p className="text-sm text-neutral-400 mb-8">
+                  <p className="text-sm text-neutral-400 mb-6">
                     Optional — skip if not relevant.
                   </p>
+
+                  {/* Previously used location chips */}
+                  {knownLocations.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {knownLocations.map((loc) => {
+                        const isSelected = capture.location === loc;
+                        return (
+                          <button
+                            key={loc}
+                            type="button"
+                            onClick={() =>
+                              setCapture((prev) => ({
+                                ...prev,
+                                location: isSelected ? "" : loc,
+                              }))
+                            }
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                              isSelected
+                                ? "bg-primary-600 text-white shadow-sm"
+                                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                            }`}
+                          >
+                            <MapPin className="w-3 h-3" />
+                            {loc}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   <input
                     ref={locationInputRef}
@@ -942,7 +1032,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                         handleLocationNext();
                       }
                     }}
-                    placeholder="Online portal, Phone call, Branch office…"
+                    placeholder={knownLocations.length > 0 ? "Or type a new location…" : "Online portal, Phone call, Branch office…"}
                     className="w-full bg-transparent text-xl text-neutral-800 placeholder:text-neutral-300 focus:outline-none border-b-2 border-neutral-200 focus:border-primary-400 transition-colors duration-200 pb-3 mb-8"
                   />
 

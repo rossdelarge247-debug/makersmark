@@ -7,6 +7,7 @@ export interface Blueprint {
   user_goal: string | null;
   end_condition: string | null;
   scenario: string | null;
+  actor_roles: Record<string, "customer" | "frontstage" | "backstage"> | null;
   status: string;
   created_at: string;
   updated_at: string;

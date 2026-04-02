@@ -162,6 +162,7 @@ export async function updateBlueprintMeta(
     user_goal?: string | null;
     end_condition?: string | null;
     scenario?: string | null;
+    actor_roles?: Record<string, string> | null;
   }
 ): Promise<void> {
   const supabase = await createClient();

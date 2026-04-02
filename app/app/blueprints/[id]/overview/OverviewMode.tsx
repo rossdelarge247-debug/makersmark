@@ -151,7 +151,7 @@ export default function OverviewMode({
     fetch("/api/seed-cells", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blueprint, steps, swimlanes }),
+      body: JSON.stringify({ blueprint, steps, swimlanes, actorRoles: blueprint.actor_roles ?? {} }),
     })
       .then((r) => r.json())
       .then(async (data: { cells: { step_index: number; swimlane_index: number; content: string }[] }) => {
@@ -252,6 +252,7 @@ export default function OverviewMode({
             step: next.step,
             swimlaneName: next.swimlane.name,
             blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
+                    actorRoles: blueprint.actor_roles ?? {},
           }),
         })
           .then((r) => r.json())
@@ -802,6 +803,7 @@ export default function OverviewMode({
                                 step: flyout.step,
                                 swimlaneName: flyout.swimlane.name,
                                 blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
+                    actorRoles: blueprint.actor_roles ?? {},
                               }),
                             })
                               .then((r) => r.json())
@@ -826,6 +828,7 @@ export default function OverviewMode({
                             step: flyout.step,
                             swimlaneName: flyout.swimlane.name,
                             blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
+                    actorRoles: blueprint.actor_roles ?? {},
                           }),
                         })
                           .then((r) => r.json())
