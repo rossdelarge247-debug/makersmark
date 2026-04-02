@@ -738,6 +738,31 @@ export default function OverviewMode({
   }
 
   // ---------------------------------------------------------------------------
+  // Delete cell content
+  // ---------------------------------------------------------------------------
+
+  async function deleteCell() {
+    if (flyout?.type !== "cell") return;
+    setFlyoutSaving(true);
+    const { step, swimlane } = flyout;
+    const k = cellKey(step.id, swimlane.id);
+    await supabase
+      .from("cells")
+      .upsert(
+        { blueprint_id: blueprint.id, step_id: step.id, swimlane_id: swimlane.id, content: "", updated_at: new Date().toISOString() },
+        { onConflict: "step_id,swimlane_id" }
+      );
+    const existing = cellMap.get(k);
+    if (existing) {
+      const newMap = new Map(cellMap);
+      newMap.set(k, { ...existing, content: "" });
+      setCellMap(newMap);
+    }
+    setFlyoutSaving(false);
+    closeFlyout();
+  }
+
+  // ---------------------------------------------------------------------------
   // Add swimlane
   // ---------------------------------------------------------------------------
 
@@ -893,6 +918,8 @@ export default function OverviewMode({
 
   function handleCellMouseDown(e: React.MouseEvent, source: DragSource) {
     if (e.button !== 0) return;
+    // Clear any stale timer from a previous mousedown that didn't fire
+    if (dragTimerRef.current) { clearTimeout(dragTimerRef.current); dragTimerRef.current = null; }
     dragSourceRef.current = source;
     const { clientX, clientY } = e;
     dragTimerRef.current = setTimeout(() => {
@@ -918,48 +945,56 @@ export default function OverviewMode({
     const content = fromCell?.content ?? "";
     const toKey = cellKey(toStep.id, toSwimlane.id);
 
-    // Upsert at destination
-    const { data: newCell } = await supabase
-      .from("cells")
-      .upsert(
-        { blueprint_id: blueprint.id, step_id: toStep.id, swimlane_id: toSwimlane.id, content, updated_at: new Date().toISOString() },
-        { onConflict: "step_id,swimlane_id" }
-      )
-      .select("*")
-      .single();
-
-    // Clear the source cell
-    await supabase
-      .from("cells")
-      .upsert(
-        { blueprint_id: blueprint.id, step_id: from.step.id, swimlane_id: from.swimlane.id, content: "", updated_at: new Date().toISOString() },
-        { onConflict: "step_id,swimlane_id" }
-      );
-
-    const newMap = new Map(cellMap);
-    if (newCell) newMap.set(toKey, newCell as Cell);
-    if (fromCell) newMap.set(from.k, { ...fromCell, content: "" });
-    setCellMap(newMap);
-
-    // Migrate notes from source cell to destination cell
-    if (fromCell?.id && newCell && (newCell as Cell).id !== fromCell.id) {
-      const destId = (newCell as Cell).id;
-      await supabase
-        .from("notes")
-        .update({ target_id: destId })
-        .eq("target_type", "cell")
-        .eq("target_id", fromCell.id);
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.target_type === "cell" && n.target_id === fromCell.id
-            ? { ...n, target_id: destId }
-            : n
+    try {
+      // Upsert at destination — must succeed before we touch the source
+      const { data: newCell, error: destErr } = await supabase
+        .from("cells")
+        .upsert(
+          { blueprint_id: blueprint.id, step_id: toStep.id, swimlane_id: toSwimlane.id, content, updated_at: new Date().toISOString() },
+          { onConflict: "step_id,swimlane_id" }
         )
-      );
-    }
+        .select("*")
+        .single();
 
-    setDragMoving(false);
-    setDragConfirm(null);
+      if (destErr || !newCell) {
+        console.error("confirmMove: destination upsert failed", destErr);
+        return;
+      }
+
+      // Clear the source cell
+      await supabase
+        .from("cells")
+        .upsert(
+          { blueprint_id: blueprint.id, step_id: from.step.id, swimlane_id: from.swimlane.id, content: "", updated_at: new Date().toISOString() },
+          { onConflict: "step_id,swimlane_id" }
+        );
+
+      // Update local map — destination gets the new cell, source is cleared
+      const newMap = new Map(cellMap);
+      newMap.set(toKey, newCell as Cell);
+      if (fromCell) newMap.set(from.k, { ...fromCell, content: "" });
+      setCellMap(newMap);
+
+      // Migrate notes from source cell to destination cell
+      if (fromCell?.id) {
+        const destId = (newCell as Cell).id;
+        await supabase
+          .from("notes")
+          .update({ target_id: destId })
+          .eq("target_type", "cell")
+          .eq("target_id", fromCell.id);
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.target_type === "cell" && n.target_id === fromCell.id
+              ? { ...n, target_id: destId }
+              : n
+          )
+        );
+      }
+    } finally {
+      setDragMoving(false);
+      setDragConfirm(null);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1959,10 +1994,21 @@ export default function OverviewMode({
                 </button>
                 <button
                   onClick={closeFlyout}
+                  disabled={flyoutSaving}
                   className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
                 >
                   Cancel
                 </button>
+                {cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.content && (
+                  <button
+                    onClick={deleteCell}
+                    disabled={flyoutSaving}
+                    className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear
+                  </button>
+                )}
               </>
             )}
             {flyout.type === "add-swimlane" && (
