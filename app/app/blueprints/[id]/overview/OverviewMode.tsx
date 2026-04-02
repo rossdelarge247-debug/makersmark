@@ -17,6 +17,13 @@ import {
   MessageSquare,
   StickyNote,
   ChevronDown,
+  HelpCircle,
+  AlertCircle,
+  Search,
+  Zap,
+  Database,
+  Star,
+  type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
@@ -25,13 +32,13 @@ import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/
 // Note category config
 // ---------------------------------------------------------------------------
 
-const NOTE_CATEGORIES: Record<NoteCategory, { label: string; textCls: string; bgCls: string; dotCls: string }> = {
-  assumption:       { label: "Assumption",       textCls: "text-amber-700",  bgCls: "bg-amber-50 border-amber-200",   dotCls: "bg-amber-400" },
-  unknown:          { label: "Unknown",           textCls: "text-purple-700", bgCls: "bg-purple-50 border-purple-200", dotCls: "bg-purple-400" },
-  research_insight: { label: "Research insight",  textCls: "text-blue-700",   bgCls: "bg-blue-50 border-blue-200",     dotCls: "bg-blue-400" },
-  pain_point:       { label: "Pain point",        textCls: "text-red-700",    bgCls: "bg-red-50 border-red-200",       dotCls: "bg-red-400" },
-  data:             { label: "Data",              textCls: "text-teal-700",   bgCls: "bg-teal-50 border-teal-200",     dotCls: "bg-teal-400" },
-  opportunity:      { label: "Opportunity",       textCls: "text-green-700",  bgCls: "bg-green-50 border-green-200",   dotCls: "bg-green-400" },
+const NOTE_CATEGORIES: Record<NoteCategory, { label: string; textCls: string; bgCls: string; dotCls: string; icon: LucideIcon }> = {
+  assumption:       { label: "Assumption",      textCls: "text-amber-700",  bgCls: "bg-amber-50 border-amber-200",   dotCls: "bg-amber-400",  icon: HelpCircle },
+  unknown:          { label: "Unknown",          textCls: "text-purple-700", bgCls: "bg-purple-50 border-purple-200", dotCls: "bg-purple-400", icon: AlertCircle },
+  research_insight: { label: "Research insight", textCls: "text-blue-700",   bgCls: "bg-blue-50 border-blue-200",     dotCls: "bg-blue-400",   icon: Search },
+  pain_point:       { label: "Pain point",       textCls: "text-red-700",    bgCls: "bg-red-50 border-red-200",       dotCls: "bg-red-400",    icon: Zap },
+  data:             { label: "Data",             textCls: "text-teal-700",   bgCls: "bg-teal-50 border-teal-200",     dotCls: "bg-teal-400",   icon: Database },
+  opportunity:      { label: "Opportunity",      textCls: "text-green-700",  bgCls: "bg-green-50 border-green-200",   dotCls: "bg-green-400",  icon: Star },
 };
 
 // ---------------------------------------------------------------------------
@@ -425,6 +432,7 @@ export default function OverviewMode({
   const [noteSaving, setNoteSaving] = useState(false);
   const [notesVisible, setNotesVisible] = useState(false);
   const [cellNotesExpanded, setCellNotesExpanded] = useState<Set<string>>(new Set());
+  const [stepNotesExpanded, setStepNotesExpanded] = useState<Set<string>>(new Set());
 
   // Derived: count map keyed by target_id
   const noteCountMap = new Map<string, number>();
@@ -804,6 +812,7 @@ export default function OverviewMode({
             onClick={() => {
               setNotesVisible((v) => !v);
               setCellNotesExpanded(new Set());
+              setStepNotesExpanded(new Set());
             }}
             className={`inline-flex items-center gap-1.5 text-xs transition-colors px-2.5 py-1 rounded-lg ${
               notesVisible
@@ -893,6 +902,13 @@ export default function OverviewMode({
                   const actor = (s.actor?.trim() || primaryUser).toLowerCase();
                   return actorRolesMap[actor] === "customer" || actor === primaryUser.toLowerCase();
                 }) ?? col.steps[0];
+                const stepNotes = notes.filter((n) => n.target_type === "step" && n.target_id === primaryStep.id);
+                const stepCatGroups = stepNotes.reduce<Partial<Record<NoteCategory, number>>>((acc, n) => {
+                  acc[n.category] = (acc[n.category] ?? 0) + 1;
+                  return acc;
+                }, {});
+                const stepNoteCats = Object.entries(stepCatGroups) as [NoteCategory, number][];
+                const showStepNotes = stepNotes.length > 0 && (notesVisible || stepNotesExpanded.has(col.id));
                 return (
                   <div
                     key={col.id}
@@ -906,29 +922,24 @@ export default function OverviewMode({
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
-                      <div className="flex items-center gap-1">
-                        {(() => {
-                          const stepNotes = notes.filter((n) => n.target_type === "step" && n.target_id === primaryStep.id);
-                          const catGroups = stepNotes.reduce<Partial<Record<NoteCategory, number>>>((acc, n) => {
-                            acc[n.category] = (acc[n.category] ?? 0) + 1;
-                            return acc;
-                          }, {});
-                          const cats = Object.entries(catGroups) as [NoteCategory, number][];
-                          return cats.length > 0 ? (
-                            <div
-                              className="flex items-center gap-0.5 cursor-pointer"
-                              onClick={(e) => { e.stopPropagation(); openFlyout({ type: "step", step: primaryStep }); }}
-                            >
-                              {cats.map(([cat, count]) => (
-                                <span
-                                  key={cat}
-                                  title={`${NOTE_CATEGORIES[cat].label}${count > 1 ? ` (${count})` : ""}`}
-                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${NOTE_CATEGORIES[cat].dotCls}`}
-                                />
-                              ))}
-                            </div>
-                          ) : null;
-                        })()}
+                      <div className="flex items-center gap-1.5">
+                        {stepNoteCats.length > 0 && (
+                          <div
+                            className="flex items-center gap-1.5 cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); openFlyout({ type: "step", step: primaryStep }); }}
+                          >
+                            {stepNoteCats.map(([cat, count]) => {
+                              const cfg = NOTE_CATEGORIES[cat];
+                              const Icon = cfg.icon;
+                              return (
+                                <span key={cat} title={cfg.label} className={`inline-flex items-center gap-0.5 ${cfg.textCls}`}>
+                                  <Icon className="w-2.5 h-2.5 flex-shrink-0" />
+                                  <span className="text-[9px] font-semibold leading-none">{count}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                         {col.isServiceMoment && (
                           <span className="text-[9px] font-medium text-neutral-300 bg-neutral-100 px-1.5 py-0.5 rounded">
                             ⚙ {col.steps.length} step{col.steps.length !== 1 ? "s" : ""}
@@ -945,6 +956,47 @@ export default function OverviewMode({
                         <span className="truncate">{primaryStep.location}</span>
                       </span>
                     )}
+
+                    {/* Per-step chevron — appears on hover when notes exist */}
+                    {stepNotes.length > 0 && (
+                      <div
+                        className="flex justify-center mt-1 opacity-0 group-hover/steph:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStepNotesExpanded((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(col.id)) { next.delete(col.id); } else { next.add(col.id); }
+                            return next;
+                          });
+                        }}
+                      >
+                        <ChevronDown
+                          className={`w-3 h-3 text-neutral-300 hover:text-neutral-500 transition-transform duration-200 ${showStepNotes ? "rotate-180" : ""}`}
+                        />
+                      </div>
+                    )}
+
+                    {/* Inline step note cards — slide down */}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        showStepNotes ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex flex-col gap-1.5 pb-1">
+                        {stepNotes.map((note) => {
+                          const cfg = NOTE_CATEGORIES[note.category];
+                          return (
+                            <div key={note.id} className={`rounded-lg border px-2 py-1.5 ${cfg.bgCls}`}>
+                              <p className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${cfg.textCls}`}>
+                                {cfg.label}
+                              </p>
+                              <p className={`text-[10px] leading-snug ${cfg.textCls}`}>{note.content}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -1038,16 +1090,23 @@ export default function OverviewMode({
                           <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
                             {noteCats.length > 0 && (
                               <div
-                                className="flex items-center gap-0.5 cursor-pointer"
+                                className="flex items-center gap-1.5 cursor-pointer"
                                 onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
                               >
-                                {noteCats.map(([cat, count]) => (
-                                  <span
-                                    key={cat}
-                                    title={`${NOTE_CATEGORIES[cat].label}${count > 1 ? ` (${count})` : ""}`}
-                                    className={`w-2 h-2 rounded-full flex-shrink-0 ${NOTE_CATEGORIES[cat].dotCls}`}
-                                  />
-                                ))}
+                                {noteCats.map(([cat, count]) => {
+                                  const cfg = NOTE_CATEGORIES[cat];
+                                  const Icon = cfg.icon;
+                                  return (
+                                    <span
+                                      key={cat}
+                                      title={cfg.label}
+                                      className={`inline-flex items-center gap-0.5 ${cfg.textCls}`}
+                                    >
+                                      <Icon className="w-2.5 h-2.5 flex-shrink-0" />
+                                      <span className="text-[9px] font-semibold leading-none">{count}</span>
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
                             {isAiSeeded && (
