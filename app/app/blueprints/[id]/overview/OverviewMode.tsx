@@ -123,6 +123,7 @@ type FlyoutState =
   | { type: "cell"; step: Step; swimlane: Swimlane }
   | { type: "step"; step: Step }
   | { type: "add-swimlane" }
+  | { type: "add-step" }
   | { type: "actor"; name: string; role: "customer" | "frontstage" | "backstage" }
   | { type: "interrogation"; targetType: "step" | "cell"; step: Step; swimlane?: Swimlane }
   | null;
@@ -347,6 +348,7 @@ function NotesSection({
             const isEditing = noteEditId === note.id;
             const isReplying = replyToNoteId === note.id;
             const replies = getReplies(note.id);
+            const noteRef = `#${note.id.replace(/-/g, "").substring(0, 6).toUpperCase()}`;
 
             return (
               <div key={note.id} className={`rounded-xl border p-3 ${cfg.bgCls} ${isEditing ? "ring-2 ring-primary-300" : ""}`}>
@@ -358,22 +360,25 @@ function NotesSection({
                       <span className="ml-1.5 normal-case font-normal opacity-60">· AI</span>
                     )}
                   </span>
-                  {!isEditing && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => onStartEdit(note)}
-                        className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors px-1"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete(note.id)}
-                        className="text-[10px] text-neutral-400 hover:text-red-500 transition-colors px-1"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-[8px] font-mono text-neutral-300 mr-1">{noteRef}</span>
+                    {!isEditing && (
+                      <>
+                        <button
+                          onClick={() => onStartEdit(note)}
+                          className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors px-1"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(note.id)}
+                          className="text-[10px] text-neutral-400 hover:text-red-500 transition-colors px-1"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <p className={`text-xs leading-relaxed ${cfg.textCls}`}>{note.content}</p>
 
@@ -521,7 +526,7 @@ export default function OverviewMode({
   const supabase = createClient();
 
   // ---- Core state ----
-  const [steps] = useState<Step[]>(initialSteps);
+  const [steps, setSteps] = useState<Step[]>(initialSteps);
   const primaryUser = blueprint.primary_user?.trim() || "";
   const actorRolesMap = (blueprint.actor_roles ?? {}) as Record<string, "customer" | "frontstage" | "backstage">;
   if (primaryUser) actorRolesMap[primaryUser.toLowerCase()] = "customer";
@@ -566,6 +571,10 @@ export default function OverviewMode({
   const [newSwimlane, setNewSwimlane] = useState("");
   const [swimlaneSaving, setSwimlaneSaving] = useState(false);
   const [deletingSwimId, setDeletingSwimId] = useState<string | null>(null);
+
+  // ---- Add step state ----
+  const [newStepTitle, setNewStepTitle] = useState("");
+  const [newStepSaving, setNewStepSaving] = useState(false);
 
   // ---- Notes state ----
   const [notes, setNotes] = useState<Note[]>(initialNotes);
@@ -730,6 +739,10 @@ export default function OverviewMode({
 
     if (next?.type === "add-swimlane") {
       setNewSwimlane("");
+    }
+
+    if (next?.type === "add-step") {
+      setNewStepTitle("");
     }
 
     if (next?.type === "interrogation") {
@@ -991,6 +1004,37 @@ export default function OverviewMode({
     setCellMap(newMap);
     setDeletingSwimId(null);
     if (flyout?.type === "cell" && flyout.swimlane.id === id) closeFlyout();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add step
+  // ---------------------------------------------------------------------------
+
+  async function saveNewStep() {
+    const title = newStepTitle.trim();
+    if (!title) return;
+    setNewStepSaving(true);
+
+    const maxOrder = steps.reduce((max, s) => Math.max(max, s.order_index), -1);
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("steps")
+      .insert({
+        blueprint_id: blueprint.id,
+        title,
+        order_index: maxOrder + 1,
+        created_at: now,
+        updated_at: now,
+      })
+      .select("*")
+      .single();
+
+    if (data) {
+      setSteps((prev) => [...prev, data as Step]);
+    }
+
+    setNewStepSaving(false);
+    closeFlyout();
   }
 
   // ---------------------------------------------------------------------------
@@ -1597,7 +1641,7 @@ export default function OverviewMode({
                   return acc;
                 }, {});
                 const stepNoteCats = Object.entries(stepCatGroups) as [NoteCategory, number][];
-                const showStepNotes = stepNotes.length > 0 && (notesVisible || stepNotesExpanded.has(col.id));
+                const showStepNotes = stepNotes.length > 0 && stepNotesExpanded.has(col.id);
                 return (
                   <div
                     key={col.id}
@@ -1724,6 +1768,20 @@ export default function OverviewMode({
                   </div>
                 );
               })}
+
+              {/* Add step button — end of header row */}
+              <div
+                style={{ width: 148, minWidth: 148 }}
+                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-100 bg-white"
+              >
+                <button
+                  onClick={() => openFlyout({ type: "add-step" })}
+                  className="inline-flex flex-col items-center gap-1.5 w-full px-3 py-3 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-300 hover:border-primary-300 hover:text-primary-500 hover:bg-primary-50 transition-colors group/addstep"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Add step</span>
+                </button>
+              </div>
             </div>
 
             {/* Swimlane rows */}
@@ -1893,18 +1951,22 @@ export default function OverviewMode({
                         {/* Inline note cards — slide down */}
                         <div
                           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                            showNoteCards ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                            showNoteCards ? "max-h-[9999px] opacity-100 mt-2" : "max-h-0 opacity-0"
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex flex-col gap-1.5 pb-1">
                             {cellNotes.map((note) => {
                               const cfg = NOTE_CATEGORIES[note.category];
+                              const noteRef = `#${note.id.replace(/-/g, "").substring(0, 6).toUpperCase()}`;
                               return (
                                 <div key={note.id} className={`rounded-lg border px-2 py-1.5 ${cfg.bgCls}`}>
-                                  <p className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${cfg.textCls}`}>
-                                    {cfg.label}
-                                  </p>
+                                  <div className={`flex items-center justify-between mb-0.5`}>
+                                    <p className={`text-[9px] font-semibold uppercase tracking-wide ${cfg.textCls}`}>
+                                      {cfg.label}
+                                    </p>
+                                    <span className="text-[8px] font-mono text-neutral-300">{noteRef}</span>
+                                  </div>
                                   <p className={`text-[10px] leading-snug ${cfg.textCls}`}>{note.content}</p>
                                 </div>
                               );
@@ -2123,6 +2185,12 @@ export default function OverviewMode({
               )}
               {flyout.type === "add-swimlane" && (
                 <h3 className="text-base font-semibold text-neutral-900">Add swimlane</h3>
+              )}
+              {flyout.type === "add-step" && (
+                <>
+                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Journey</p>
+                  <h3 className="text-base font-semibold text-neutral-900">Add step</h3>
+                </>
               )}
               {flyout.type === "actor" && (
                 <>
@@ -2512,6 +2580,28 @@ export default function OverviewMode({
               </div>
             )}
 
+            {/* ---- Add step panel ---- */}
+            {flyout.type === "add-step" && (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-2">
+                    Step title
+                  </label>
+                  <input
+                    autoFocus
+                    value={newStepTitle}
+                    onChange={(e) => setNewStepTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveNewStep(); }}
+                    placeholder="e.g. Customer submits application…"
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100 transition-colors"
+                  />
+                </div>
+                <p className="text-xs text-neutral-400">
+                  The new step will be appended at the end of the journey.
+                </p>
+              </div>
+            )}
+
           </div>
 
           {/* Fly-out footer */}
@@ -2552,6 +2642,24 @@ export default function OverviewMode({
                 >
                   {swimlaneSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   Add swimlane
+                </button>
+                <button
+                  onClick={closeFlyout}
+                  className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {flyout.type === "add-step" && (
+              <>
+                <button
+                  onClick={saveNewStep}
+                  disabled={newStepSaving || !newStepTitle.trim()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {newStepSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Add step
                 </button>
                 <button
                   onClick={closeFlyout}
