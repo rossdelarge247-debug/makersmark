@@ -560,8 +560,7 @@ export default function OverviewMode({
   const [flyoutVisible, setFlyoutVisible] = useState(false);
   const [flyoutContent, setFlyoutContent] = useState("");
   const [flyoutSaving, setFlyoutSaving] = useState(false);
-  const [flyoutAiSuggestion, setFlyoutAiSuggestion] = useState("");
-  const [flyoutAiLoading, setFlyoutAiLoading] = useState(false);
+  const [cellTitleEditing, setCellTitleEditing] = useState(false);
 
   // ---- Add swimlane state ----
   const [newSwimlane, setNewSwimlane] = useState("");
@@ -720,34 +719,13 @@ export default function OverviewMode({
 
   function openFlyout(next: FlyoutState) {
     setFlyout(next);
-    setFlyoutAiSuggestion("");
-    setFlyoutAiLoading(false);
     resetNoteForm();
+    setCellTitleEditing(false);
 
     if (next?.type === "cell") {
       const k = cellKey(next.step.id, next.swimlane.id);
       const existing = cellMap.get(k);
-      const content = existing?.content ?? "";
-      setFlyoutContent(content);
-
-      // Auto-suggest if empty or AI-seeded
-      if (!content || aiSeededKeys.has(k)) {
-        setFlyoutAiLoading(true);
-        fetch("/api/suggest-cell", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            step: next.step,
-            swimlaneName: next.swimlane.name,
-            blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
-                    actorRoles: blueprint.actor_roles ?? {},
-          }),
-        })
-          .then((r) => r.json())
-          .then((d: { content: string }) => setFlyoutAiSuggestion(d.content ?? ""))
-          .catch(() => setFlyoutAiSuggestion(""))
-          .finally(() => setFlyoutAiLoading(false));
-      }
+      setFlyoutContent(existing?.content ?? "");
     }
 
     if (next?.type === "add-swimlane") {
@@ -855,7 +833,7 @@ export default function OverviewMode({
     setTimeout(() => {
       setFlyout(null);
       setFlyoutContent("");
-      setFlyoutAiSuggestion("");
+      setCellTitleEditing(false);
       setInterrogationItems([]);
       setRespondingItemId(null);
       setRespondText("");
@@ -913,6 +891,36 @@ export default function OverviewMode({
   // ---------------------------------------------------------------------------
   // Save cell
   // ---------------------------------------------------------------------------
+
+  async function saveCellInline() {
+    if (flyout?.type !== "cell") return;
+    setFlyoutSaving(true);
+    const { step, swimlane } = flyout;
+    const content = flyoutContent.trim();
+    const k = cellKey(step.id, swimlane.id);
+    const row = {
+      blueprint_id: blueprint.id,
+      step_id: step.id,
+      swimlane_id: swimlane.id,
+      content,
+      updated_at: new Date().toISOString(),
+    };
+    const { data } = await supabase
+      .from("cells")
+      .upsert(row, { onConflict: "step_id,swimlane_id" })
+      .select("*")
+      .single();
+    if (data) {
+      const newMap = new Map(cellMap);
+      newMap.set(k, data as Cell);
+      setCellMap(newMap);
+      const newKeys = new Set(aiSeededKeys);
+      newKeys.delete(k);
+      setAiSeededKeys(newKeys);
+    }
+    setFlyoutSaving(false);
+    setCellTitleEditing(false);
+  }
 
   async function saveCell() {
     if (flyout?.type !== "cell") return;
@@ -2091,12 +2099,51 @@ export default function OverviewMode({
             <div>
               {flyout.type === "cell" && (
                 <>
-                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-0.5">
                     {flyout.swimlane.name}
                   </p>
-                  <h3 className="text-base font-semibold text-neutral-900 leading-snug">
+                  <p className="text-[11px] text-neutral-400 mb-2">
                     Step {steps.findIndex((s) => s.id === flyout.step.id) + 1}: {flyout.step.title}
-                  </h3>
+                  </p>
+                  {cellTitleEditing ? (
+                    <div className="flex items-start gap-2">
+                      <textarea
+                        autoFocus
+                        value={flyoutContent}
+                        onChange={(e) => setFlyoutContent(e.target.value)}
+                        rows={3}
+                        className="flex-1 text-sm font-semibold text-neutral-900 bg-transparent border-b-2 border-primary-400 focus:outline-none resize-none leading-snug"
+                      />
+                      <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                        <button
+                          onClick={saveCellInline}
+                          disabled={flyoutSaving}
+                          className="w-6 h-6 rounded flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                        >
+                          {flyoutSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        </button>
+                        <button
+                          onClick={() => { setCellTitleEditing(false); setFlyoutContent(cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.content ?? ""); }}
+                          className="w-6 h-6 rounded flex items-center justify-center text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 group/celltitle">
+                      <h3 className="flex-1 text-base font-semibold text-neutral-900 leading-snug">
+                        {flyoutContent || <span className="font-normal text-neutral-300 italic">No content yet</span>}
+                      </h3>
+                      <button
+                        onClick={() => setCellTitleEditing(true)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-neutral-300 hover:text-neutral-500 hover:bg-neutral-100 opacity-0 group-hover/celltitle:opacity-100 transition-all flex-shrink-0 mt-0.5"
+                        title="Edit content"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {flyout.type === "step" && (
@@ -2140,114 +2187,26 @@ export default function OverviewMode({
           {/* Fly-out body */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
-            {/* ---- Cell editor ---- */}
+            {/* ---- Cell panel ---- */}
             {flyout.type === "cell" && (
               <div className="flex flex-col gap-5">
-                {/* Step context */}
-                <div className="flex flex-wrap gap-2">
-                  {flyout.step.actor && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-100 text-xs text-neutral-500">
-                      <User className="w-3 h-3" />
-                      {flyout.step.actor}
-                    </span>
-                  )}
-                  {flyout.step.location && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-100 text-xs text-neutral-500">
-                      <MapPin className="w-3 h-3" />
-                      {flyout.step.location}
-                    </span>
-                  )}
-                </div>
-
-                {/* Content textarea */}
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-2">
-                    Cell content
-                  </label>
-                  <textarea
-                    value={flyoutContent}
-                    onChange={(e) => setFlyoutContent(e.target.value)}
-                    rows={4}
-                    placeholder="Describe what happens in this cell…"
-                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100 resize-none transition-colors"
-                  />
-                </div>
-
-                {/* AI suggestion */}
-                <div className="rounded-xl bg-primary-50 border border-primary-100 p-4">
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-                    <span className="text-xs font-semibold text-primary-600">AI suggestion</span>
+                {/* Step context chips */}
+                {(flyout.step.actor || flyout.step.location) && (
+                  <div className="flex flex-wrap gap-2">
+                    {flyout.step.actor && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-100 text-xs text-neutral-500">
+                        <User className="w-3 h-3" />
+                        {flyout.step.actor}
+                      </span>
+                    )}
+                    {flyout.step.location && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-100 text-xs text-neutral-500">
+                        <MapPin className="w-3 h-3" />
+                        {flyout.step.location}
+                      </span>
+                    )}
                   </div>
-
-                  {flyoutAiLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-primary-400">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Generating suggestion…
-                    </div>
-                  ) : flyoutAiSuggestion ? (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-sm text-primary-800 leading-relaxed">
-                        {flyoutAiSuggestion}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setFlyoutContent(flyoutAiSuggestion)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors font-medium"
-                        >
-                          Use this
-                        </button>
-                        <button
-                          onClick={() => {
-                            setFlyoutAiSuggestion("");
-                            setFlyoutAiLoading(true);
-                            fetch("/api/suggest-cell", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                step: flyout.step,
-                                swimlaneName: flyout.swimlane.name,
-                                blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
-                    actorRoles: blueprint.actor_roles ?? {},
-                              }),
-                            })
-                              .then((r) => r.json())
-                              .then((d: { content: string }) => setFlyoutAiSuggestion(d.content ?? ""))
-                              .catch(() => setFlyoutAiSuggestion(""))
-                              .finally(() => setFlyoutAiLoading(false));
-                          }}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-primary-200 text-primary-600 hover:bg-primary-100 transition-colors"
-                        >
-                          Regenerate
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setFlyoutAiLoading(true);
-                        fetch("/api/suggest-cell", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            step: flyout.step,
-                            swimlaneName: flyout.swimlane.name,
-                            blueprintContext: `${blueprint.primary_user || "Customer"} trying to ${blueprint.user_goal || "complete their goal"}`,
-                    actorRoles: blueprint.actor_roles ?? {},
-                          }),
-                        })
-                          .then((r) => r.json())
-                          .then((d: { content: string }) => setFlyoutAiSuggestion(d.content ?? ""))
-                          .catch(() => setFlyoutAiSuggestion(""))
-                          .finally(() => setFlyoutAiLoading(false));
-                      }}
-                      className="flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-700 transition-colors"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Generate suggestion
-                    </button>
-                  )}
-                </div>
+                )}
 
                 {/* Service moment cross-section */}
                 {(() => {
@@ -2595,33 +2554,23 @@ export default function OverviewMode({
             {flyout.type === "cell" && (
               <>
                 <button
-                  onClick={saveCell}
-                  disabled={flyoutSaving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors"
-                >
-                  {flyoutSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  Save
-                </button>
-                <button
-                  onClick={closeFlyout}
-                  disabled={flyoutSaving}
-                  className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
                   onClick={() => openFlyout({ type: "interrogation", targetType: "cell", step: flyout.step, swimlane: flyout.swimlane })}
-                  disabled={flyoutSaving}
-                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-violet-600 hover:bg-violet-50 disabled:opacity-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Interrogate
+                </button>
+                <button
+                  onClick={closeFlyout}
+                  className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                  Close
                 </button>
                 {cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.content && (
                   <button
                     onClick={deleteCell}
                     disabled={flyoutSaving}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                    className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear
