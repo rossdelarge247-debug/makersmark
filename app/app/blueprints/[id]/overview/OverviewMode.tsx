@@ -16,6 +16,7 @@ import {
   Trash2,
   MessageSquare,
   StickyNote,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
@@ -91,7 +92,6 @@ type FlyoutState =
   | { type: "cell"; step: Step; swimlane: Swimlane }
   | { type: "step"; step: Step }
   | { type: "add-swimlane" }
-  | { type: "all-notes" }
   | null;
 
 // ---------------------------------------------------------------------------
@@ -423,7 +423,8 @@ export default function OverviewMode({
   const [noteFormCategory, setNoteFormCategory] = useState<NoteCategory>("assumption");
   const [noteFormContent, setNoteFormContent] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
-  const [allNotesFilter, setAllNotesFilter] = useState<NoteCategory | "all">("all");
+  const [notesVisible, setNotesVisible] = useState(false);
+  const [cellNotesExpanded, setCellNotesExpanded] = useState<Set<string>>(new Set());
 
   // Derived: count map keyed by target_id
   const noteCountMap = new Map<string, number>();
@@ -800,13 +801,20 @@ export default function OverviewMode({
 
         <div className="flex items-center gap-3 min-w-[160px] justify-end">
           <button
-            onClick={() => openFlyout({ type: "all-notes" })}
-            className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+            onClick={() => {
+              setNotesVisible((v) => !v);
+              setCellNotesExpanded(new Set());
+            }}
+            className={`inline-flex items-center gap-1.5 text-xs transition-colors px-2.5 py-1 rounded-lg ${
+              notesVisible
+                ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
+                : "text-neutral-400 hover:text-neutral-600"
+            }`}
           >
             <StickyNote className="w-3.5 h-3.5" />
             Notes
             {notes.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold">
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${notesVisible ? "bg-orange-200 text-orange-700" : "bg-neutral-100 text-neutral-500"}`}>
                 {notes.length}
               </span>
             )}
@@ -900,15 +908,25 @@ export default function OverviewMode({
                       <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
                       <div className="flex items-center gap-1">
                         {(() => {
-                          const stepNoteCount = noteCountMap.get(primaryStep.id) ?? 0;
-                          return stepNoteCount > 0 ? (
-                            <span
+                          const stepNotes = notes.filter((n) => n.target_type === "step" && n.target_id === primaryStep.id);
+                          const catGroups = stepNotes.reduce<Partial<Record<NoteCategory, number>>>((acc, n) => {
+                            acc[n.category] = (acc[n.category] ?? 0) + 1;
+                            return acc;
+                          }, {});
+                          const cats = Object.entries(catGroups) as [NoteCategory, number][];
+                          return cats.length > 0 ? (
+                            <div
+                              className="flex items-center gap-0.5 cursor-pointer"
                               onClick={(e) => { e.stopPropagation(); openFlyout({ type: "step", step: primaryStep }); }}
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold cursor-pointer hover:bg-orange-200 transition-colors"
                             >
-                              <MessageSquare className="w-2 h-2" />
-                              {stepNoteCount}
-                            </span>
+                              {cats.map(([cat, count]) => (
+                                <span
+                                  key={cat}
+                                  title={`${NOTE_CATEGORIES[cat].label}${count > 1 ? ` (${count})` : ""}`}
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${NOTE_CATEGORIES[cat].dotCls}`}
+                                />
+                              ))}
+                            </div>
                           ) : null;
                         })()}
                         {col.isServiceMoment && (
@@ -991,6 +1009,13 @@ export default function OverviewMode({
                   const isAiSeeded = aiSeededKeys.has(k);
                   const isEvidenceRow = swimlane.name === "Physical / digital evidence";
                   const evidenceHint = isEvidenceRow ? inferEvidence(step.location) : null;
+                  const cellNotes = cell ? notes.filter((n) => n.target_type === "cell" && n.target_id === cell.id) : [];
+                  const showNoteCards = cellNotes.length > 0 && (notesVisible || cellNotesExpanded.has(k));
+                  const catGroups = cellNotes.reduce<Partial<Record<NoteCategory, number>>>((acc, n) => {
+                    acc[n.category] = (acc[n.category] ?? 0) + 1;
+                    return acc;
+                  }, {});
+                  const noteCats = Object.entries(catGroups) as [NoteCategory, number][];
 
                   return (
                     <div
@@ -1011,18 +1036,20 @@ export default function OverviewMode({
                         <>
                           <p className="text-[11px] text-neutral-600 leading-relaxed">{cell.content}</p>
                           <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
-                            {(() => {
-                              const cellNoteCount = cell ? (noteCountMap.get(cell.id) ?? 0) : 0;
-                              return cellNoteCount > 0 ? (
-                                <span
-                                  onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold cursor-pointer hover:bg-orange-200 transition-colors"
-                                >
-                                  <MessageSquare className="w-2 h-2" />
-                                  {cellNoteCount}
-                                </span>
-                              ) : null;
-                            })()}
+                            {noteCats.length > 0 && (
+                              <div
+                                className="flex items-center gap-0.5 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
+                              >
+                                {noteCats.map(([cat, count]) => (
+                                  <span
+                                    key={cat}
+                                    title={`${NOTE_CATEGORIES[cat].label}${count > 1 ? ` (${count})` : ""}`}
+                                    className={`w-2 h-2 rounded-full flex-shrink-0 ${NOTE_CATEGORIES[cat].dotCls}`}
+                                  />
+                                ))}
+                              </div>
+                            )}
                             {isAiSeeded && (
                               <span className="opacity-0 group-hover/cell:opacity-100 transition-opacity">
                                 <Sparkles className="w-2.5 h-2.5 text-primary-300" />
@@ -1037,6 +1064,47 @@ export default function OverviewMode({
                           </div>
                         </div>
                       )}
+
+                      {/* Per-cell chevron — appears on hover when notes exist */}
+                      {cellNotes.length > 0 && (
+                        <div
+                          className="flex justify-center mt-1 opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCellNotesExpanded((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(k)) { next.delete(k); } else { next.add(k); }
+                              return next;
+                            });
+                          }}
+                        >
+                          <ChevronDown
+                            className={`w-3 h-3 text-neutral-300 hover:text-neutral-500 transition-transform duration-200 ${showNoteCards ? "rotate-180" : ""}`}
+                          />
+                        </div>
+                      )}
+
+                      {/* Inline note cards — slide down */}
+                      <div
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                          showNoteCards ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex flex-col gap-1.5 pb-1">
+                          {cellNotes.map((note) => {
+                            const cfg = NOTE_CATEGORIES[note.category];
+                            return (
+                              <div key={note.id} className={`rounded-lg border px-2 py-1.5 ${cfg.bgCls}`}>
+                                <p className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${cfg.textCls}`}>
+                                  {cfg.label}
+                                </p>
+                                <p className={`text-[10px] leading-snug ${cfg.textCls}`}>{note.content}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1110,12 +1178,6 @@ export default function OverviewMode({
               )}
               {flyout.type === "add-swimlane" && (
                 <h3 className="text-base font-semibold text-neutral-900">Add swimlane</h3>
-              )}
-              {flyout.type === "all-notes" && (
-                <>
-                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Blueprint</p>
-                  <h3 className="text-base font-semibold text-neutral-900">All notes</h3>
-                </>
               )}
             </div>
             <button
@@ -1354,90 +1416,6 @@ export default function OverviewMode({
               </div>
             )}
 
-            {/* ---- All notes ---- */}
-            {flyout.type === "all-notes" && (
-              <div className="flex flex-col gap-4">
-                {/* Category filter chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => setAllNotesFilter("all")}
-                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors ${
-                      allNotesFilter === "all"
-                        ? "bg-neutral-800 text-white border-neutral-800"
-                        : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400"
-                    }`}
-                  >
-                    All ({notes.length})
-                  </button>
-                  {(Object.entries(NOTE_CATEGORIES) as [NoteCategory, typeof NOTE_CATEGORIES[NoteCategory]][]).map(([cat, cfg]) => {
-                    const count = notes.filter((n) => n.category === cat).length;
-                    if (count === 0) return null;
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setAllNotesFilter(cat)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors ${
-                          allNotesFilter === cat
-                            ? `${cfg.bgCls} ${cfg.textCls} border-current`
-                            : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400"
-                        }`}
-                      >
-                        {cfg.label} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Notes list */}
-                {(() => {
-                  const filtered = allNotesFilter === "all" ? notes : notes.filter((n) => n.category === allNotesFilter);
-                  if (filtered.length === 0) {
-                    return (
-                      <p className="text-xs text-neutral-400 text-center py-6">
-                        No notes yet. Open a step or cell to add notes.
-                      </p>
-                    );
-                  }
-                  return (
-                    <div className="flex flex-col gap-3">
-                      {filtered.map((note) => {
-                        const cfg = NOTE_CATEGORIES[note.category];
-                        // Resolve target label
-                        let targetLabel = "Unknown";
-                        if (note.target_type === "step") {
-                          const s = steps.find((st) => st.id === note.target_id);
-                          targetLabel = s ? `Step: ${s.title}` : "Step";
-                        } else {
-                          // Find the cell and its swimlane
-                          let found = false;
-                          cellMap.forEach((c, k) => {
-                            if (c.id === note.target_id) {
-                              const parts = k.split(":");
-                              const sw = swimlanes.find((s) => s.id === parts[1]);
-                              const st = steps.find((s) => s.id === parts[0]);
-                              if (sw && st) targetLabel = `${sw.name} — ${st.title}`;
-                              found = true;
-                            }
-                          });
-                          if (!found) targetLabel = "Cell";
-                        }
-                        return (
-                          <div key={note.id} className={`rounded-xl border p-3 ${cfg.bgCls}`}>
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <span className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.textCls}`}>
-                                {cfg.label}
-                              </span>
-                              <span className="text-[10px] text-neutral-400 truncate max-w-[140px]">{targetLabel}</span>
-                            </div>
-                            <p className={`text-xs leading-relaxed ${cfg.textCls}`}>{note.content}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
           </div>
 
           {/* Fly-out footer */}
@@ -1479,14 +1457,6 @@ export default function OverviewMode({
               </>
             )}
             {flyout.type === "step" && (
-              <button
-                onClick={closeFlyout}
-                className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
-              >
-                Close
-              </button>
-            )}
-            {flyout.type === "all-notes" && (
               <button
                 onClick={closeFlyout}
                 className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
