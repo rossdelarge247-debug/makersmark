@@ -1,12 +1,22 @@
+import { redirect } from "next/navigation";
+import { getBlueprintById, getStepsForBlueprint } from "@/lib/supabase/blueprint-actions";
+import CaptureMode from "./CaptureMode";
+
 interface CapturePageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function CapturePage({ params }: CapturePageProps) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-neutral-900">Capture mode</h1>
-      <p className="mt-2 text-sm text-neutral-500 font-mono">{params.id}</p>
-    </div>
-  );
+export default async function CapturePage({ params }: CapturePageProps) {
+  const { id } = await params;
+
+  const [blueprint, steps] = await Promise.all([
+    getBlueprintById(id),
+    getStepsForBlueprint(id),
+  ]);
+
+  if (!blueprint) {
+    redirect("/app");
+  }
+
+  return <CaptureMode blueprint={blueprint} initialSteps={steps} />;
 }
