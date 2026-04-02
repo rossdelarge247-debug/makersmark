@@ -17,6 +17,7 @@ import {
   MessageSquare,
   StickyNote,
   ChevronDown,
+  ChevronRight,
   HelpCircle,
   AlertCircle,
   Search,
@@ -99,6 +100,7 @@ type FlyoutState =
   | { type: "cell"; step: Step; swimlane: Swimlane }
   | { type: "step"; step: Step }
   | { type: "add-swimlane" }
+  | { type: "actor"; name: string; role: "customer" | "frontstage" | "backstage" }
   | null;
 
 // ---------------------------------------------------------------------------
@@ -1057,35 +1059,17 @@ export default function OverviewMode({
       </nav>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Metadata bar — actors · scenario · last edited */}
+      {/* Scenario strip */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex-shrink-0 flex items-start justify-between gap-4 px-6 py-2.5 bg-neutral-50 border-b border-neutral-100">
+      <div className="flex-shrink-0 flex items-center justify-between gap-4 px-6 py-3 bg-white border-b border-neutral-100">
 
-        {/* Left: actor chips */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 min-w-[160px]">
-          {(() => {
-            const actors: { name: string; role: "customer" | "frontstage" | "backstage" }[] = [];
-            if (primaryUser) actors.push({ name: primaryUser, role: "customer" });
-            Object.entries(actorRolesMap).forEach(([name, role]) => {
-              if (name !== primaryUser.toLowerCase()) actors.push({ name, role });
-            });
-            if (actors.length === 0) return <span className="text-[10px] text-neutral-300">No actors yet</span>;
-            return actors.map(({ name, role }) => {
-              const s = ROLE_STYLE[role];
-              return (
-                <span key={name} className={`inline-flex flex-col items-start px-2 py-0.5 rounded-lg border text-[10px] font-medium leading-tight ${s.cls}`}>
-                  <span className="capitalize">{name}</span>
-                  <span className="text-[9px] opacity-60 font-normal">{s.label}</span>
-                </span>
-              );
-            });
-          })()}
-        </div>
+        {/* Scenario label */}
+        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">Scenario</p>
 
-        {/* Centre: scenario (editable) */}
+        {/* Editable scenario text */}
         <div className="flex-1 flex justify-center">
           {scenarioEditing ? (
-            <div className="flex flex-col items-center gap-1.5 w-full max-w-xl">
+            <div className="flex flex-col items-center gap-1.5 w-full max-w-2xl">
               <textarea
                 ref={scenarioInputRef}
                 value={scenarioValue}
@@ -1093,38 +1077,67 @@ export default function OverviewMode({
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveScenarioEdit(); } if (e.key === "Escape") { setScenarioEditing(false); setScenarioValue(blueprint.scenario ?? ""); } }}
                 rows={2}
                 placeholder="Describe the scenario for this blueprint…"
-                className="w-full text-xs text-neutral-700 italic bg-white border border-primary-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-200 resize-none text-center"
+                className="w-full text-sm text-neutral-700 bg-white border border-primary-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-200 resize-none text-center"
               />
               <div className="flex items-center gap-2">
-                <button onClick={saveScenarioEdit} disabled={scenarioSaving} className="text-[10px] px-2.5 py-1 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                <button onClick={saveScenarioEdit} disabled={scenarioSaving} className="text-xs px-3 py-1 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors">
                   {scenarioSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
                 </button>
-                <button onClick={() => { setScenarioEditing(false); setScenarioValue(blueprint.scenario ?? ""); }} className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors">Cancel</button>
+                <button onClick={() => { setScenarioEditing(false); setScenarioValue(blueprint.scenario ?? ""); }} className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors">Cancel</button>
               </div>
             </div>
           ) : (
             <div
-              className="group/scenario flex items-start gap-1.5 cursor-pointer max-w-xl text-center"
+              className="group/scenario flex items-center gap-2 cursor-pointer max-w-2xl"
               onClick={() => { setScenarioEditing(true); setTimeout(() => scenarioInputRef.current?.focus(), 30); }}
             >
               {scenarioValue ? (
-                <p className="text-xs text-neutral-400 italic leading-relaxed">
-                  <span className="font-medium text-neutral-500 not-italic">Scenario: </span>
-                  {scenarioValue}
-                </p>
+                <p className="text-sm text-neutral-600 leading-snug">{scenarioValue}</p>
               ) : (
-                <p className="text-xs text-neutral-300 italic">+ Add scenario…</p>
+                <p className="text-sm text-neutral-300 italic">+ Add scenario…</p>
               )}
-              <Pencil className="w-3 h-3 text-neutral-300 opacity-0 group-hover/scenario:opacity-100 flex-shrink-0 mt-0.5 transition-opacity" />
+              <Pencil className="w-3.5 h-3.5 text-neutral-300 opacity-0 group-hover/scenario:opacity-100 flex-shrink-0 transition-opacity" />
             </div>
           )}
         </div>
 
-        {/* Right: last edited */}
-        <div className="text-[10px] text-neutral-400 whitespace-nowrap pt-0.5 min-w-[80px] text-right">
+        {/* Last edited */}
+        <p className="text-[10px] text-neutral-400 whitespace-nowrap">
           Edited {formatRelativeTime(lastEdited)}
-        </div>
+        </p>
 
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Actor strip */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="flex-shrink-0 flex items-center gap-0 px-6 py-2.5 bg-white border-b border-neutral-100">
+        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap mr-4">Actors</p>
+        {(() => {
+          const actors: { name: string; role: "customer" | "frontstage" | "backstage" }[] = [];
+          if (primaryUser) actors.push({ name: primaryUser, role: "customer" });
+          Object.entries(actorRolesMap).forEach(([name, role]) => {
+            if (name !== primaryUser.toLowerCase()) actors.push({ name, role });
+          });
+          if (actors.length === 0) {
+            return <span className="text-xs text-neutral-300">No actors yet — add them in blueprint settings</span>;
+          }
+          return (
+            <div className="flex items-center gap-1">
+              {actors.map(({ name, role }) => (
+                <button
+                  key={name}
+                  onClick={() => openFlyout({ type: "actor", name, role })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-neutral-50 transition-colors text-neutral-800 group/actor"
+                >
+                  <User className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                  <span className="text-sm capitalize">{name}</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-neutral-300 group-hover/actor:text-neutral-500 transition-colors" />
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -1671,6 +1684,12 @@ export default function OverviewMode({
               {flyout.type === "add-swimlane" && (
                 <h3 className="text-base font-semibold text-neutral-900">Add swimlane</h3>
               )}
+              {flyout.type === "actor" && (
+                <>
+                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Actor</p>
+                  <h3 className="text-base font-semibold text-neutral-900 capitalize">{flyout.name}</h3>
+                </>
+              )}
             </div>
             <button
               onClick={closeFlyout}
@@ -1884,6 +1903,22 @@ export default function OverviewMode({
               </div>
             )}
 
+            {/* ---- Actor detail ---- */}
+            {flyout.type === "actor" && (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-neutral-50 border border-neutral-100">
+                  <User className="w-8 h-8 text-neutral-300" />
+                  <div>
+                    <p className="text-sm font-medium text-neutral-700 capitalize">{flyout.name}</p>
+                    <p className="text-xs text-neutral-400">{ROLE_STYLE[flyout.role].label}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                  Detailed actor profiles — goals, pain points, demographics, and more — will be available in a future update.
+                </p>
+              </div>
+            )}
+
             {/* ---- Add swimlane ---- */}
             {flyout.type === "add-swimlane" && (
               <div className="flex flex-col gap-4">
@@ -1949,6 +1984,14 @@ export default function OverviewMode({
               </>
             )}
             {flyout.type === "step" && (
+              <button
+                onClick={closeFlyout}
+                className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                Close
+              </button>
+            )}
+            {flyout.type === "actor" && (
               <button
                 onClick={closeFlyout}
                 className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
