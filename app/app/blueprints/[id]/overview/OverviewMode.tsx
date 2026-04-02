@@ -24,8 +24,6 @@ import {
   Zap,
   Database,
   Star,
-  Brain,
-  Reply,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -2355,7 +2353,7 @@ export default function OverviewMode({
                                         disabled={!!savingItemId}
                                         className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50 transition-colors"
                                       >
-                                        <Reply className="w-3 h-3" />
+                                        <MessageSquare className="w-3 h-3" />
                                         Respond
                                       </button>
                                       <button
@@ -2429,7 +2427,7 @@ export default function OverviewMode({
                   disabled={flyoutSaving}
                   className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-violet-600 hover:bg-violet-50 disabled:opacity-50 transition-colors"
                 >
-                  <Brain className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5" />
                   Interrogate
                 </button>
                 {cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.content && (
@@ -2468,7 +2466,7 @@ export default function OverviewMode({
                   onClick={() => openFlyout({ type: "interrogation", targetType: "step", step: flyout.step })}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
                 >
-                  <Brain className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5" />
                   Interrogate
                 </button>
                 <button
