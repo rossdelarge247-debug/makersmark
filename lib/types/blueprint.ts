@@ -21,6 +21,7 @@ export interface Step {
   order_index: number;
   actor?: string | null;
   location?: string | null;
+  service_moment?: string | null;
   created_at: string;
   updated_at: string;
 }

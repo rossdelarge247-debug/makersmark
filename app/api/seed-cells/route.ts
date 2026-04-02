@@ -29,8 +29,8 @@ export async function POST(req: Request) {
 
   const stepList = steps
     .map(
-      (s: { title: string; actor?: string | null; location?: string | null; description?: string | null }, i: number) =>
-        `Step ${i + 1}: "${s.title}" | Actor: ${s.actor || blueprint.primary_user || "Customer"} | Location: ${s.location || "not specified"} | Description: ${s.description || "not provided"}`
+      (s: { title: string; actor?: string | null; location?: string | null; description?: string | null; service_moment?: string | null }, i: number) =>
+        `Step ${i + 1}: "${s.title}" | Actor: ${s.actor || blueprint.primary_user || "Customer"} | Location: ${s.location || "not specified"} | Service moment: ${s.service_moment || "own column"} | Description: ${s.description || "not provided"}`
     )
     .join("\n");
 
@@ -62,6 +62,8 @@ Layer guidance:
 - For custom swimlanes: use the swimlane name as context to infer relevant content.
 
 CRITICAL: Do not place a backstage actor's actions in the User actions or Frontstage rows, and vice versa. Use the actor roles above to assign content to the correct row.
+
+Service moment grouping: When multiple steps share the same service_moment, they represent different swimlane layers within one blueprint column. Generate cells that complement each other across layers rather than repeating the same content.
 
 Only include cells with genuinely meaningful content. Skip a cell rather than write something generic.
 

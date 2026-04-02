@@ -79,6 +79,115 @@ type FlyoutState =
   | null;
 
 // ---------------------------------------------------------------------------
+// Column building
+// ---------------------------------------------------------------------------
+
+interface ColumnDef {
+  id: string;
+  title: string;
+  isServiceMoment: boolean; // true = named backstage-only phase; false = customer step
+  steps: Step[];
+  orderIndex: number;
+}
+
+function buildColumns(
+  steps: Step[],
+  primaryUser: string,
+  actorRoles: Record<string, "customer" | "frontstage" | "backstage">
+): ColumnDef[] {
+  const columns = new Map<string, ColumnDef>();
+
+  function getRole(step: Step) {
+    const actor = (step.actor?.trim() || primaryUser).toLowerCase();
+    return actorRoles[actor] ?? (actor === primaryUser.toLowerCase() ? "customer" : null);
+  }
+
+  // First pass: create columns for customer steps
+  for (const step of steps) {
+    if (getRole(step) === "customer") {
+      columns.set(step.id, {
+        id: step.id,
+        title: step.title,
+        isServiceMoment: false,
+        steps: [step],
+        orderIndex: step.order_index,
+      });
+    }
+  }
+
+  const customerTitles = new Map<string, string>(); // title.lower → column id
+  columns.forEach((col) => customerTitles.set(col.title.toLowerCase(), col.id));
+
+  // Second pass: assign internal steps to columns
+  for (const step of steps) {
+    if (getRole(step) === "customer") continue;
+
+    if (step.service_moment) {
+      const lowerMoment = step.service_moment.toLowerCase();
+      const customerColId = customerTitles.get(lowerMoment);
+
+      if (customerColId) {
+        // Attach to the matching customer step column
+        columns.get(customerColId)!.steps.push(step);
+      } else {
+        // Named service moment column
+        const key = `moment::${step.service_moment}`;
+        if (!columns.has(key)) {
+          columns.set(key, {
+            id: key,
+            title: step.service_moment,
+            isServiceMoment: true,
+            steps: [step],
+            orderIndex: step.order_index,
+          });
+        } else {
+          const col = columns.get(key)!;
+          col.steps.push(step);
+          col.orderIndex = Math.min(col.orderIndex, step.order_index);
+        }
+      }
+    } else {
+      // Fallback: own column (unassigned internal step)
+      columns.set(step.id, {
+        id: step.id,
+        title: step.title,
+        isServiceMoment: true,
+        steps: [step],
+        orderIndex: step.order_index,
+      });
+    }
+  }
+
+  return Array.from(columns.values()).sort((a, b) => a.orderIndex - b.orderIndex);
+}
+
+/** Pick the right step from a column for a given swimlane */
+function stepForSwimlane(
+  col: ColumnDef,
+  swimlane: Swimlane,
+  primaryUser: string,
+  actorRoles: Record<string, "customer" | "frontstage" | "backstage">
+): Step {
+  const name = swimlane.name.toLowerCase();
+  const getRole = (s: Step) => {
+    const actor = (s.actor?.trim() || primaryUser).toLowerCase();
+    return actorRoles[actor] ?? (actor === primaryUser.toLowerCase() ? "customer" : null);
+  };
+
+  if (name.includes("user action")) {
+    return col.steps.find((s) => getRole(s) === "customer") ?? col.steps[0];
+  }
+  if (name.includes("frontstage")) {
+    return col.steps.find((s) => getRole(s) === "frontstage") ?? col.steps[0];
+  }
+  if (name.includes("backstage")) {
+    return col.steps.find((s) => getRole(s) === "backstage") ?? col.steps[0];
+  }
+  // Evidence / Support / custom → use customer step if present, else first
+  return col.steps.find((s) => getRole(s) === "customer") ?? col.steps[0];
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -103,6 +212,10 @@ export default function OverviewMode({
 
   // ---- Core state ----
   const [steps] = useState<Step[]>(initialSteps);
+  const primaryUser = blueprint.primary_user?.trim() || "";
+  const actorRolesMap = (blueprint.actor_roles ?? {}) as Record<string, "customer" | "frontstage" | "backstage">;
+  if (primaryUser) actorRolesMap[primaryUser.toLowerCase()] = "customer";
+  const columns = buildColumns(steps, primaryUser, actorRolesMap);
   const [swimlanes, setSwimlanes] = useState<Swimlane[]>(initialSwimlanes);
   const [cellMap, setCellMap] = useState<Map<CellKey, Cell>>(() => {
     const m = new Map<CellKey, Cell>();
@@ -501,46 +614,49 @@ export default function OverviewMode({
       {steps.length > 0 && (
         <div className="flex-1 overflow-auto">
           <div
-            style={{ minWidth: `${LABEL_W + steps.length * CELL_W + 48}px` }}
+            style={{ minWidth: `${LABEL_W + columns.length * CELL_W + 48}px` }}
             className="pb-10"
           >
-            {/* Step header row */}
-            <div
-              className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-            >
+            {/* Column header row */}
+            <div className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               {/* Corner cell */}
-              <div
-                style={{ width: LABEL_W, minWidth: LABEL_W }}
-                className="flex-shrink-0 px-4 py-3 border-r border-neutral-100"
-              />
-              {/* Step columns */}
-              {steps.map((step, i) => (
-                <div
-                  key={step.id}
-                  style={{ width: CELL_W, minWidth: CELL_W }}
-                  className="flex-shrink-0 px-3 py-2.5 border-r border-neutral-100 cursor-pointer hover:bg-neutral-50 transition-colors group/steph"
-                  onClick={() => openFlyout({ type: "step", step })}
-                >
-                  <div className="flex items-start justify-between gap-1 mb-1">
-                    <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
-                    {step.actor && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-neutral-300 truncate max-w-[100px]">
-                        <User className="w-2.5 h-2.5 flex-shrink-0" />
-                        <span className="truncate">{step.actor}</span>
+              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-100" />
+              {columns.map((col, i) => {
+                const primaryStep = col.steps.find((s) => {
+                  const actor = (s.actor?.trim() || primaryUser).toLowerCase();
+                  return actorRolesMap[actor] === "customer" || actor === primaryUser.toLowerCase();
+                }) ?? col.steps[0];
+                return (
+                  <div
+                    key={col.id}
+                    style={{ width: CELL_W, minWidth: CELL_W }}
+                    className={`flex-shrink-0 px-3 py-2.5 border-r border-neutral-100 cursor-pointer transition-colors group/steph ${
+                      col.isServiceMoment
+                        ? "bg-neutral-50 hover:bg-neutral-100"
+                        : "bg-white hover:bg-neutral-50"
+                    }`}
+                    onClick={() => openFlyout({ type: "step", step: primaryStep })}
+                  >
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
+                      {col.isServiceMoment && (
+                        <span className="text-[9px] font-medium text-neutral-300 bg-neutral-100 px-1.5 py-0.5 rounded">
+                          ⚙ {col.steps.length} step{col.steps.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-semibold text-neutral-700 leading-snug line-clamp-2">
+                      {col.title}
+                    </p>
+                    {primaryStep.location && (
+                      <span className="flex items-center gap-0.5 mt-1 text-[9px] text-neutral-300">
+                        <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                        <span className="truncate">{primaryStep.location}</span>
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] font-semibold text-neutral-700 leading-snug line-clamp-2">
-                    {step.title}
-                  </p>
-                  {step.location && (
-                    <span className="flex items-center gap-0.5 mt-1 text-[9px] text-neutral-300">
-                      <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
-                      <span className="truncate">{step.location}</span>
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Swimlane rows */}
@@ -554,7 +670,7 @@ export default function OverviewMode({
               <div key={swimlane.id}>
               {/* Notation divider */}
               {notation && (
-                <div className="flex items-center px-4 py-0" style={{ minWidth: `${LABEL_W + steps.length * CELL_W + 48}px` }}>
+                <div className="flex items-center px-4 py-0" style={{ minWidth: `${LABEL_W + columns.length * CELL_W + 48}px` }}>
                   <div className="flex-1 border-t-2 border-dashed border-neutral-300" />
                   <div className="flex-shrink-0 mx-3 flex flex-col items-center">
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">
@@ -579,34 +695,24 @@ export default function OverviewMode({
                   <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
                     {deletingSwimId === swimlane.id ? (
                       <>
-                        <button
-                          onClick={() => deleteSwimlane(swimlane.id)}
-                          className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors"
-                          title="Confirm delete"
-                        >
+                        <button onClick={() => deleteSwimlane(swimlane.id)} className="w-5 h-5 rounded bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors" title="Confirm delete">
                           <Check className="w-2.5 h-2.5 text-white" />
                         </button>
-                        <button
-                          onClick={() => setDeletingSwimId(null)}
-                          className="w-5 h-5 rounded bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors text-[9px] text-neutral-500"
-                        >
+                        <button onClick={() => setDeletingSwimId(null)} className="w-5 h-5 rounded bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors text-[9px] text-neutral-500">
                           ✕
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={() => setDeletingSwimId(swimlane.id)}
-                        className="w-5 h-5 rounded hover:bg-red-50 flex items-center justify-center transition-colors"
-                        title="Delete swimlane"
-                      >
+                      <button onClick={() => setDeletingSwimId(swimlane.id)} className="w-5 h-5 rounded hover:bg-red-50 flex items-center justify-center transition-colors" title="Delete swimlane">
                         <Trash2 className="w-2.5 h-2.5 text-neutral-300 hover:text-red-400" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Cells */}
-                {steps.map((step) => {
+                {/* Cells — one per column */}
+                {columns.map((col) => {
+                  const step = stepForSwimlane(col, swimlane, primaryUser, actorRolesMap);
                   const k = cellKey(step.id, swimlane.id);
                   const cell = cellMap.get(k);
                   const isAiSeeded = aiSeededKeys.has(k);
@@ -615,16 +721,13 @@ export default function OverviewMode({
 
                   return (
                     <div
-                      key={step.id}
+                      key={col.id}
                       style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
                       onClick={() => openFlyout({ type: "cell", step, swimlane })}
                       className={`flex-shrink-0 border-r border-neutral-100 px-3 py-2.5 cursor-pointer transition-colors group/cell relative ${
-                        cell?.content
-                          ? "hover:bg-primary-50/40"
-                          : "hover:bg-neutral-50"
-                      }`}
+                        col.isServiceMoment ? "bg-neutral-50/50" : ""
+                      } ${cell?.content ? "hover:bg-primary-50/40" : "hover:bg-neutral-50"}`}
                     >
-                      {/* Evidence icon badge */}
                       {isEvidenceRow && evidenceHint && (
                         <div className="flex items-center gap-1 mb-1.5">
                           <span className="text-sm leading-none">{evidenceHint.icon}</span>
@@ -633,9 +736,7 @@ export default function OverviewMode({
                       )}
                       {cell?.content ? (
                         <>
-                          <p className="text-[11px] text-neutral-600 leading-relaxed">
-                            {cell.content}
-                          </p>
+                          <p className="text-[11px] text-neutral-600 leading-relaxed">{cell.content}</p>
                           {isAiSeeded && (
                             <span className="absolute bottom-1.5 right-2 opacity-0 group-hover/cell:opacity-100 transition-opacity">
                               <Sparkles className="w-2.5 h-2.5 text-primary-300" />

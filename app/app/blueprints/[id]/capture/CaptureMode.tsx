@@ -11,10 +11,11 @@ import type { Blueprint, Step } from "@/lib/types/blueprint";
 // Types
 // ---------------------------------------------------------------------------
 
-type CapturePhase = "actor" | "location" | "description" | "title";
+type CapturePhase = "actor" | "service_moment" | "location" | "description" | "title";
 
 interface CaptureState {
   actor: string;
+  service_moment: string;
   location: string;
   description: string;
   suggestedTitle: string;
@@ -331,6 +332,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
 
   const [capture, setCapture] = useState<CaptureState>({
     actor: blueprint.primary_user?.trim() || "",
+    service_moment: "",
     location: "",
     description: "",
     suggestedTitle: "",
@@ -338,9 +340,12 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     isSuggestingTitle: false,
     editingStepId: null,
   });
+  const [showNewServiceMoment, setShowNewServiceMoment] = useState(false);
+  const [newServiceMomentInput, setNewServiceMomentInput] = useState("");
 
   // Refs
   const addActorInputRef = useRef<HTMLInputElement>(null);
+  const serviceMomentInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const descTextareaRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -352,11 +357,45 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     new Set(steps.map((s) => s.location?.trim()).filter(Boolean) as string[])
   );
 
+  // Customer step titles (for service moment picker)
+  const customerStepTitles: string[] = steps
+    .filter((s) => {
+      const actor = s.actor?.trim() || primaryUser;
+      const role = actorRoles[actor.toLowerCase()];
+      return role === "customer" || actor.toLowerCase() === primaryUser.toLowerCase();
+    })
+    .map((s) => s.title);
+
+  // Named service moments (non-customer-step service_moment values already in use)
+  const customerTitleSet = new Set(customerStepTitles.map((t) => t.toLowerCase()));
+  const knownServiceMoments: string[] = Array.from(
+    new Set(
+      steps
+        .filter((s) => s.service_moment && !customerTitleSet.has(s.service_moment.toLowerCase()))
+        .map((s) => s.service_moment as string)
+    )
+  );
+
+  // Helper: is the current actor an internal (non-customer) actor?
+  function isInternalActor(actor: string) {
+    const role = actorRoles[actor.toLowerCase()];
+    return role === "frontstage" || role === "backstage";
+  }
+
+  // Phase sequence depends on whether actor is internal
+  function getPhaseSequence(actor: string): CapturePhase[] {
+    return isInternalActor(actor)
+      ? ["actor", "service_moment", "location", "description", "title"]
+      : ["actor", "location", "description", "title"];
+  }
+
   // ---- Focus management ----
   useEffect(() => {
     if (!isCapturing) return;
     if (phase === "actor" && showAddActor) {
       setTimeout(() => addActorInputRef.current?.focus(), 50);
+    } else if (phase === "service_moment" && showNewServiceMoment) {
+      setTimeout(() => serviceMomentInputRef.current?.focus(), 50);
     } else if (phase === "location") {
       setTimeout(() => locationInputRef.current?.focus(), 50);
     } else if (phase === "description") {
@@ -364,7 +403,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     } else if (phase === "title") {
       setTimeout(() => titleInputRef.current?.focus(), 50);
     }
-  }, [phase, isCapturing, showAddActor]);
+  }, [phase, isCapturing, showAddActor, showNewServiceMoment]);
 
   // ---- Transition helper ----
   const transitionPhase = useCallback(
@@ -384,6 +423,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     setInsertAtIndex(colIndex);
     setCapture({
       actor,
+      service_moment: "",
       location: "",
       description: "",
       suggestedTitle: "",
@@ -394,6 +434,8 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     setAddActorInput("");
     setShowAddActor(false);
     setNewActorRole(null);
+    setShowNewServiceMoment(false);
+    setNewServiceMomentInput("");
     setPhase("actor");
     setPhaseVisible(true);
     setIsCapturing(true);
@@ -423,8 +465,14 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   // ---- Start capturing a new step ----
   function startCapture(defaultActor?: string) {
     const actor = defaultActor ?? primaryUser;
+    // Pre-select last service moment used by this actor
+    const lastMoment = [...steps]
+      .reverse()
+      .find((s) => s.actor?.toLowerCase() === actor.toLowerCase() && s.service_moment)
+      ?.service_moment ?? "";
     setCapture({
       actor,
+      service_moment: lastMoment,
       location: "",
       description: "",
       suggestedTitle: "",
@@ -435,6 +483,8 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     setAddActorInput("");
     setShowAddActor(false);
     setNewActorRole(null);
+    setShowNewServiceMoment(false);
+    setNewServiceMomentInput("");
     setPhase("actor");
     setPhaseVisible(true);
     setIsCapturing(true);
@@ -444,6 +494,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   function startEdit(step: Step) {
     setCapture({
       actor: step.actor?.trim() || primaryUser,
+      service_moment: step.service_moment?.trim() || "",
       location: step.location?.trim() || "",
       description: step.description ?? "",
       suggestedTitle: "",
@@ -453,6 +504,9 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     });
     setAddActorInput("");
     setShowAddActor(false);
+    setNewActorRole(null);
+    setShowNewServiceMoment(false);
+    setNewServiceMomentInput("");
     setPhase("actor");
     setPhaseVisible(true);
     setIsCapturing(true);
@@ -467,7 +521,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     }, 200);
   }
 
-  // ---- Phase 1: Actor → Phase 2: Location ----
+  // ---- Phase 1: Actor → Phase 2 (service_moment or location) ----
   function handleActorNext() {
     const finalActor =
       showAddActor && addActorInput.trim()
@@ -475,20 +529,53 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
         : capture.actor;
 
     // Persist role for new actors
+    let updatedRoles = actorRoles;
     if (showAddActor && addActorInput.trim() && newActorRole) {
-      const updated = { ...actorRoles, [finalActor.toLowerCase()]: newActorRole };
-      setActorRoles(updated);
+      updatedRoles = { ...actorRoles, [finalActor.toLowerCase()]: newActorRole };
+      setActorRoles(updatedRoles);
       supabase
         .from("blueprints")
-        .update({ actor_roles: updated, updated_at: new Date().toISOString() })
+        .update({ actor_roles: updatedRoles, updated_at: new Date().toISOString() })
         .eq("id", blueprint.id);
     }
 
+    const role = updatedRoles[finalActor.toLowerCase()];
+    const internal = role === "frontstage" || role === "backstage";
+
+    // Pre-select last service moment used by this actor
+    const lastMoment = [...steps]
+      .reverse()
+      .find((s) => s.actor?.toLowerCase() === finalActor.toLowerCase() && s.service_moment)
+      ?.service_moment ?? "";
+
+    if (internal) {
+      transitionPhase("service_moment", () => {
+        setCapture((prev) => ({ ...prev, actor: finalActor, service_moment: lastMoment }));
+        setShowAddActor(false);
+        setAddActorInput("");
+        setNewActorRole(null);
+        setShowNewServiceMoment(false);
+        setNewServiceMomentInput("");
+      });
+    } else {
+      transitionPhase("location", () => {
+        setCapture((prev) => ({ ...prev, actor: finalActor, service_moment: "" }));
+        setShowAddActor(false);
+        setAddActorInput("");
+        setNewActorRole(null);
+      });
+    }
+  }
+
+  // ---- Phase 2 (internal): Service moment → Phase 3: Location ----
+  function handleServiceMomentNext() {
+    const finalMoment = showNewServiceMoment
+      ? newServiceMomentInput.trim()
+      : capture.service_moment;
     transitionPhase("location", () => {
-      setCapture((prev) => ({ ...prev, actor: finalActor }));
-      setShowAddActor(false);
-      setAddActorInput("");
-      setNewActorRole(null);
+      setCapture((prev) => ({ ...prev, service_moment: finalMoment }));
+      setShowNewServiceMoment(false);
+      setNewServiceMomentInput("");
     });
   }
 
@@ -553,6 +640,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
             description: capture.description.trim() || null,
             actor: capture.actor.trim() || null,
             location: capture.location.trim() || null,
+            service_moment: capture.service_moment.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq("id", capture.editingStepId);
@@ -568,6 +656,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                   description: capture.description.trim() || null,
                   actor: capture.actor.trim() || null,
                   location: capture.location.trim() || null,
+                  service_moment: capture.service_moment.trim() || null,
                 }
               : s
           )
@@ -597,6 +686,7 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
             description: capture.description.trim() || null,
             actor: capture.actor.trim() || null,
             location: capture.location.trim() || null,
+            service_moment: capture.service_moment.trim() || null,
             order_index: targetIndex,
           })
           .select("*")
@@ -627,12 +717,14 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
         return;
       }
 
-      // Loop — reset for next step, keep same actor
+      // Loop — reset for next step, keep same actor + service moment
       const keepActor = capture.actor;
+      const keepMoment = capture.service_moment;
       setPhaseVisible(false);
       setTimeout(() => {
         setCapture({
           actor: keepActor,
+          service_moment: keepMoment,
           location: "",
           description: "",
           suggestedTitle: "",
@@ -675,7 +767,9 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   }
 
   // ---- Phase label ----
-  const phaseNumber = { actor: 1, location: 2, description: 3, title: 4 }[phase];
+  const phaseSequence = getPhaseSequence(capture.actor);
+  const totalPhases = phaseSequence.length;
+  const phaseNumber = phaseSequence.indexOf(phase) + 1 || 1;
 
   // ---- Render ----
   return (
@@ -779,10 +873,10 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
             {/* Phase indicator */}
             <div className="flex items-center gap-3 mb-8">
               <span className="text-xs text-neutral-400 tabular-nums">
-                {phaseNumber} of 4
+                {phaseNumber} of {totalPhases}
               </span>
               <div className="flex items-center gap-1">
-                {([1, 2, 3, 4] as const).map((n) => (
+                {Array.from({ length: totalPhases }, (_, i) => i + 1).map((n) => (
                   <div
                     key={n}
                     className={`h-1 rounded-full transition-all duration-300 ${
@@ -967,6 +1061,157 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
                       className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
                     >
                       Skip →
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ---- Phase 2 (internal actors): Service moment ---- */}
+            <div
+              className={`transition-all duration-200 ${
+                phaseVisible && phase === "service_moment"
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-2 pointer-events-none absolute"
+              }`}
+            >
+              {phase === "service_moment" && (
+                <>
+                  <h2 className="text-3xl font-bold text-neutral-900 mb-2 leading-tight">
+                    What service moment is this part of?
+                  </h2>
+                  <p className="text-sm text-neutral-400 mb-8">
+                    Link this step to a customer journey moment or a named backstage phase.
+                  </p>
+
+                  {/* Customer step chips */}
+                  {customerStepTitles.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-3">
+                        Customer journey steps
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {customerStepTitles.map((title) => {
+                          const isSelected = !showNewServiceMoment && capture.service_moment === title;
+                          return (
+                            <button
+                              key={title}
+                              type="button"
+                              onClick={() => {
+                                setCapture((prev) => ({ ...prev, service_moment: title }));
+                                setShowNewServiceMoment(false);
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                                isSelected
+                                  ? "bg-primary-600 text-white shadow-sm"
+                                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                              }`}
+                            >
+                              {title}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Named service moment chips */}
+                  {knownServiceMoments.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-3">
+                        Named service moments
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {knownServiceMoments.map((moment) => {
+                          const isSelected = !showNewServiceMoment && capture.service_moment === moment;
+                          return (
+                            <button
+                              key={moment}
+                              type="button"
+                              onClick={() => {
+                                setCapture((prev) => ({ ...prev, service_moment: moment }));
+                                setShowNewServiceMoment(false);
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                                isSelected
+                                  ? "bg-primary-600 text-white shadow-sm"
+                                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                              }`}
+                            >
+                              ⚙ {moment}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New service moment input */}
+                  {!showNewServiceMoment ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewServiceMoment(true);
+                        setCapture((prev) => ({ ...prev, service_moment: "" }));
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium text-neutral-400 border border-dashed border-neutral-300 hover:border-neutral-400 hover:text-neutral-600 transition-all duration-150 mb-8"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      New service moment
+                    </button>
+                  ) : (
+                    <div className="mb-8">
+                      <input
+                        ref={serviceMomentInputRef}
+                        type="text"
+                        value={newServiceMomentInput}
+                        onChange={(e) => setNewServiceMomentInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newServiceMomentInput.trim()) handleServiceMomentNext();
+                        }}
+                        placeholder="e.g. Application under review, Food being prepared…"
+                        className="w-full bg-transparent text-lg text-neutral-800 placeholder:text-neutral-300 focus:outline-none border-b-2 border-neutral-200 focus:border-primary-400 transition-colors duration-200 pb-3"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewServiceMoment(false);
+                          setNewServiceMomentInput("");
+                        }}
+                        className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+                      >
+                        ← Back
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleServiceMomentNext}
+                      disabled={
+                        showNewServiceMoment
+                          ? !newServiceMomentInput.trim()
+                          : !capture.service_moment
+                      }
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => transitionPhase("location")}
+                      className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                    >
+                      Skip →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => transitionPhase("actor")}
+                      className="ml-auto text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                    >
+                      ← Back
                     </button>
                   </div>
                 </>
