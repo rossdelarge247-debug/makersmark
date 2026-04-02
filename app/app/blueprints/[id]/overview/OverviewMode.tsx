@@ -938,6 +938,24 @@ export default function OverviewMode({
     if (newCell) newMap.set(toKey, newCell as Cell);
     if (fromCell) newMap.set(from.k, { ...fromCell, content: "" });
     setCellMap(newMap);
+
+    // Migrate notes from source cell to destination cell
+    if (fromCell?.id && newCell && (newCell as Cell).id !== fromCell.id) {
+      const destId = (newCell as Cell).id;
+      await supabase
+        .from("notes")
+        .update({ target_id: destId })
+        .eq("target_type", "cell")
+        .eq("target_id", fromCell.id);
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.target_type === "cell" && n.target_id === fromCell.id
+            ? { ...n, target_id: destId }
+            : n
+        )
+      );
+    }
+
     setDragMoving(false);
     setDragConfirm(null);
   }
@@ -1414,6 +1432,8 @@ export default function OverviewMode({
                             ? "bg-white border-dashed border-neutral-200 cursor-default"
                             : cell?.content
                             ? "bg-white border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 cursor-pointer"
+                            : isEvidenceRow
+                            ? "bg-white/70 border-neutral-100 cursor-pointer hover:bg-white hover:border-neutral-200"
                             : "bg-transparent border-transparent cursor-pointer hover:bg-white/60 hover:border-dashed hover:border-neutral-200"
                         }`}
                       >
