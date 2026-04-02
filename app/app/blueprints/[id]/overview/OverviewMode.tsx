@@ -604,6 +604,7 @@ export default function OverviewMode({
   // ---- Visual flyout state ----
   const [visualGenerating, setVisualGenerating] = useState(false);
   const [visualModification, setVisualModification] = useState("");
+  const [visualError, setVisualError] = useState<string | null>(null);
 
   // ---- Interrogation state ----
   const [interrogationLoading, setInterrogationLoading] = useState(false);
@@ -765,6 +766,7 @@ export default function OverviewMode({
 
     if (next?.type === "visual") {
       setVisualModification("");
+      setVisualError(null);
       // Auto-generate if no visual exists yet
       if (!visualMap.has(next.step.id)) {
         generateVisual(next.step, null);
@@ -1070,6 +1072,7 @@ export default function OverviewMode({
 
   async function generateVisual(step: Step, modification: string | null) {
     setVisualGenerating(true);
+    setVisualError(null);
     try {
       const res = await fetch("/api/generate-visual", {
         method: "POST",
@@ -1089,13 +1092,14 @@ export default function OverviewMode({
           m.set(step.id, data.visual as Visual);
           return m;
         });
-        // Update the step in local state so visual_id is reflected
         setSteps((prev) =>
           prev.map((s) => (s.id === step.id ? { ...s, visual_id: (data.visual as Visual).id } : s))
         );
+      } else {
+        setVisualError(data.error ?? "Generation failed — check API keys and database setup.");
       }
     } catch (err) {
-      console.error("generateVisual error:", err);
+      setVisualError(err instanceof Error ? err.message : "Unexpected error during generation.");
     } finally {
       setVisualGenerating(false);
     }
@@ -2792,6 +2796,14 @@ export default function OverviewMode({
                       </div>
                     )}
                   </div>
+
+                  {/* Error message */}
+                  {visualError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-red-600 mb-0.5">Generation failed</p>
+                      <p className="text-[11px] text-red-500 leading-relaxed">{visualError}</p>
+                    </div>
+                  )}
 
                   {/* Modification input */}
                   <div>
