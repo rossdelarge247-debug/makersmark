@@ -1,53 +1,36 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const didRun = useRef(false);
 
   useEffect(() => {
     if (didRun.current) return;
     didRun.current = true;
 
-    const code = searchParams.get("code");
-
-    if (!code) {
-      router.replace("/login?error=auth_callback_failed");
-      return;
-    }
-
     const supabase = createClient();
 
-    supabase.auth.exchangeCodeForSession(code).then(async ({ error }) => {
-      if (error) {
-        router.replace(`/login?error=${encodeURIComponent(error.message)}`);
-        return;
-      }
+    setTimeout(async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace("/login");
+      if (error || !session) {
+        router.replace(`/login?error=${encodeURIComponent(error?.message ?? "auth_failed")}`);
         return;
       }
 
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
-        .eq("id", user.id)
+        .eq("id", session.user.id)
         .single();
 
-      if (!profile || !profile.onboarding_completed) {
-        router.replace("/onboarding");
-      } else {
-        router.replace("/app");
-      }
-    });
-  }, [router, searchParams]);
+      router.replace(!profile || !profile.onboarding_completed ? "/onboarding" : "/app");
+    }, 200);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
