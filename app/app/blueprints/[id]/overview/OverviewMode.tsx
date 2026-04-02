@@ -280,6 +280,7 @@ interface NotesSectionProps {
   onDelete: (id: string) => void;
   onStartEdit: (note: Note) => void;
   onCancelEdit: () => void;
+  onReply: (parentNote: Note, content: string) => Promise<Note | null>;
 }
 
 function NotesSection({
@@ -298,15 +299,31 @@ function NotesSection({
   onDelete,
   onStartEdit,
   onCancelEdit,
+  onReply,
 }: NotesSectionProps) {
+  const [replyToNoteId, setReplyToNoteId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replySaving, setReplySaving] = useState(false);
+
+  async function handleSaveReply(parentNote: Note) {
+    if (!replyText.trim() || replySaving) return;
+    setReplySaving(true);
+    await onReply(parentNote, replyText.trim());
+    setReplyText("");
+    setReplyToNoteId(null);
+    setReplySaving(false);
+  }
+
   const showForm = noteAddMode || noteEditId !== null;
+  const topLevelNotes = notes.filter((n) => !n.parent_note_id);
+  const getReplies = (noteId: string) => notes.filter((n) => n.parent_note_id === noteId);
 
   return (
     <div className="pt-4 border-t border-neutral-100">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
-          Notes {notes.length > 0 && <span className="text-orange-500">({notes.length})</span>}
+          Notes {topLevelNotes.length > 0 && <span className="text-orange-500">({topLevelNotes.length})</span>}
         </span>
         {!showForm && targetId && (
           <button
@@ -322,17 +339,24 @@ function NotesSection({
         )}
       </div>
 
-      {/* Existing notes */}
-      {notes.length > 0 && (
+      {/* Notes with nested replies */}
+      {topLevelNotes.length > 0 && (
         <div className="flex flex-col gap-2 mb-3">
-          {notes.map((note) => {
+          {topLevelNotes.map((note) => {
             const cfg = NOTE_CATEGORIES[note.category];
             const isEditing = noteEditId === note.id;
+            const isReplying = replyToNoteId === note.id;
+            const replies = getReplies(note.id);
+
             return (
               <div key={note.id} className={`rounded-xl border p-3 ${cfg.bgCls} ${isEditing ? "ring-2 ring-primary-300" : ""}`}>
+                {/* Note header */}
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <span className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.textCls}`}>
                     {cfg.label}
+                    {note.source_type === "ai_accept" && (
+                      <span className="ml-1.5 normal-case font-normal opacity-60">· AI</span>
+                    )}
                   </span>
                   {!isEditing && (
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -352,6 +376,68 @@ function NotesSection({
                   )}
                 </div>
                 <p className={`text-xs leading-relaxed ${cfg.textCls}`}>{note.content}</p>
+
+                {/* Existing replies */}
+                {replies.length > 0 && (
+                  <div className="mt-2 ml-2 pl-2.5 border-l-2 border-neutral-200 flex flex-col gap-1.5">
+                    {replies.map((reply) => (
+                      <div key={reply.id} className="bg-white/70 rounded-lg px-2.5 py-2">
+                        <div className="flex items-start justify-between gap-1 mb-0.5">
+                          <span className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wide">
+                            {reply.source_type === "ai_response" ? "AI answer" : "Reply"}
+                          </span>
+                          <button
+                            onClick={() => onDelete(reply.id)}
+                            className="text-neutral-300 hover:text-red-400 transition-colors flex-shrink-0"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-neutral-600 leading-relaxed">{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reply form */}
+                {isReplying && (
+                  <div className="mt-2 ml-2 pl-2.5 border-l-2 border-primary-200">
+                    <textarea
+                      autoFocus
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      rows={2}
+                      placeholder="Your reply…"
+                      className="w-full px-2.5 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100 resize-none bg-white transition-colors"
+                    />
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <button
+                        onClick={() => handleSaveReply(note)}
+                        disabled={replySaving || !replyText.trim()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-800 text-white text-[11px] font-semibold hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {replySaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        Save reply
+                      </button>
+                      <button
+                        onClick={() => { setReplyToNoteId(null); setReplyText(""); }}
+                        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reply trigger */}
+                {!isEditing && !isReplying && (
+                  <button
+                    onClick={() => { setReplyToNoteId(note.id); setReplyText(""); onCancelEdit(); }}
+                    className={`mt-1.5 text-[10px] font-medium transition-colors ${cfg.textCls} opacity-50 hover:opacity-100`}
+                  >
+                    + Reply
+                  </button>
+                )}
               </div>
             );
           })}
@@ -516,10 +602,12 @@ export default function OverviewMode({
   const dragSourceRef = useRef<DragSource | null>(null);
   const didDragRef = useRef(false);
 
-  // Derived: count map keyed by target_id
+  // Derived: count map keyed by target_id — top-level notes only
   const noteCountMap = new Map<string, number>();
   for (const n of notes) {
-    noteCountMap.set(n.target_id, (noteCountMap.get(n.target_id) ?? 0) + 1);
+    if (!n.parent_note_id) {
+      noteCountMap.set(n.target_id, (noteCountMap.get(n.target_id) ?? 0) + 1);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -981,6 +1069,27 @@ export default function OverviewMode({
     setNoteAddMode(false);
   }
 
+  async function saveReply(parentNote: Note, content: string): Promise<Note | null> {
+    const { data } = await supabase
+      .from("notes")
+      .insert({
+        blueprint_id: blueprint.id,
+        target_type: parentNote.target_type,
+        target_id: parentNote.target_id,
+        category: parentNote.category,
+        content: content.trim(),
+        source_type: "user",
+        parent_note_id: parentNote.id,
+      })
+      .select("*")
+      .single();
+    if (data) {
+      setNotes((prev) => [...prev, data as Note]);
+      return data as Note;
+    }
+    return null;
+  }
+
   // ---------------------------------------------------------------------------
   // Interrogation actions
   // ---------------------------------------------------------------------------
@@ -1058,21 +1167,40 @@ export default function OverviewMode({
 
     if (saveMode === "note" || saveMode === "both") {
       const category = GROUP_TO_NOTE_CATEGORY[item.group_type];
-      const { data: note } = await supabase
+      // Save AI question as parent note
+      const { data: parentNote } = await supabase
         .from("notes")
         .insert({
           blueprint_id: blueprint.id,
           target_type: targetType,
           target_id: targetId,
           category,
-          content: text,
-          source_type: "ai_response",
+          content: item.content,
+          source_type: "ai_accept",
+          parent_note_id: null,
         })
         .select("*")
         .single();
-      if (note) {
-        setNotes((prev) => [...prev, note as Note]);
-        savedNoteId = (note as Note).id;
+      if (parentNote) {
+        setNotes((prev) => [...prev, parentNote as Note]);
+        savedNoteId = (parentNote as Note).id;
+        // Save user's answer as a reply to the parent note
+        const { data: replyNote } = await supabase
+          .from("notes")
+          .insert({
+            blueprint_id: blueprint.id,
+            target_type: targetType,
+            target_id: targetId,
+            category,
+            content: text,
+            source_type: "ai_response",
+            parent_note_id: (parentNote as Note).id,
+          })
+          .select("*")
+          .single();
+        if (replyNote) {
+          setNotes((prev) => [...prev, replyNote as Note]);
+        }
       }
     }
 
@@ -2127,6 +2255,7 @@ export default function OverviewMode({
                       onDelete={deleteNote}
                       onStartEdit={startEditNote}
                       onCancelEdit={resetNoteForm}
+                      onReply={saveReply}
                     />
                   );
                 })()}
@@ -2194,6 +2323,7 @@ export default function OverviewMode({
                   onDelete={deleteNote}
                   onStartEdit={startEditNote}
                   onCancelEdit={resetNoteForm}
+                  onReply={saveReply}
                 />
               </div>
             )}

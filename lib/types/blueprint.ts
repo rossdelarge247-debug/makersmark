@@ -60,6 +60,7 @@ export interface Note {
   category: NoteCategory;
   content: string;
   source_type: "user" | "ai_response" | "ai_accept";
+  parent_note_id: string | null;
   created_at: string;
 }
 
