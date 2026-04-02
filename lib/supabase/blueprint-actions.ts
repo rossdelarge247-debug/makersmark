@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, Visual } from "@/lib/types/blueprint";
 
 // Re-export types for consumers that import them from this module
-export type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory };
+export type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, Visual };
 
 // ---------------------------------------------------------------------------
 // Default swimlanes
@@ -532,4 +532,22 @@ export async function getNotesForBlueprint(
   }
 
   return (data ?? []) as Note[];
+}
+
+export async function getVisualsForBlueprint(
+  blueprintId: string
+): Promise<Visual[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("visuals")
+    .select("*")
+    .eq("blueprint_id", blueprintId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as Visual[];
 }

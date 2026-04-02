@@ -24,10 +24,13 @@ import {
   Zap,
   Database,
   Star,
+  Film,
+  RefreshCw,
   type LucideIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, AISuggestionItem, InterrogationGroupType } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, AISuggestionItem, InterrogationGroupType, Visual } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
 // Note category config
@@ -126,6 +129,7 @@ type FlyoutState =
   | { type: "add-step" }
   | { type: "actor"; name: string; role: "customer" | "frontstage" | "backstage" }
   | { type: "interrogation"; targetType: "step" | "cell"; step: Step; swimlane?: Swimlane }
+  | { type: "visual"; step: Step }
   | null;
 
 // ---------------------------------------------------------------------------
@@ -510,6 +514,7 @@ interface OverviewModeProps {
   initialSwimlanes: Swimlane[];
   initialCells: Cell[];
   initialNotes: Note[];
+  initialVisuals: Visual[];
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +527,7 @@ export default function OverviewMode({
   initialSwimlanes,
   initialCells,
   initialNotes,
+  initialVisuals,
 }: OverviewModeProps) {
   const supabase = createClient();
 
@@ -586,6 +592,18 @@ export default function OverviewMode({
   const [notesVisible, setNotesVisible] = useState(false);
   const [cellNotesExpanded, setCellNotesExpanded] = useState<Set<string>>(new Set());
   const [stepNotesExpanded, setStepNotesExpanded] = useState<Set<string>>(new Set());
+
+  // ---- Visuals state ----
+  const [visualMap, setVisualMap] = useState<Map<string, Visual>>(() => {
+    const m = new Map<string, Visual>();
+    for (const v of initialVisuals) m.set(v.step_id, v);
+    return m;
+  });
+  const [storyboardVisible, setStoryboardVisible] = useState(false);
+
+  // ---- Visual flyout state ----
+  const [visualGenerating, setVisualGenerating] = useState(false);
+  const [visualModification, setVisualModification] = useState("");
 
   // ---- Interrogation state ----
   const [interrogationLoading, setInterrogationLoading] = useState(false);
@@ -745,6 +763,14 @@ export default function OverviewMode({
       setNewStepTitle("");
     }
 
+    if (next?.type === "visual") {
+      setVisualModification("");
+      // Auto-generate if no visual exists yet
+      if (!visualMap.has(next.step.id)) {
+        generateVisual(next.step, null);
+      }
+    }
+
     if (next?.type === "interrogation") {
       setInterrogationLoading(true);
       setInterrogationItems([]);
@@ -850,6 +876,7 @@ export default function OverviewMode({
       setInterrogationItems([]);
       setRespondingItemId(null);
       setRespondText("");
+      setVisualModification("");
     }, 300);
   }, []);
 
@@ -1035,6 +1062,52 @@ export default function OverviewMode({
 
     setNewStepSaving(false);
     closeFlyout();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Visual generation
+  // ---------------------------------------------------------------------------
+
+  async function generateVisual(step: Step, modification: string | null) {
+    setVisualGenerating(true);
+    try {
+      const res = await fetch("/api/generate-visual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId: step.id,
+          stepTitle: step.title,
+          stepDescription: step.description,
+          blueprintId: blueprint.id,
+          modification,
+        }),
+      });
+      const data = await res.json();
+      if (data.visual) {
+        setVisualMap((prev) => {
+          const m = new Map(prev);
+          m.set(step.id, data.visual as Visual);
+          return m;
+        });
+        // Update the step in local state so visual_id is reflected
+        setSteps((prev) =>
+          prev.map((s) => (s.id === step.id ? { ...s, visual_id: (data.visual as Visual).id } : s))
+        );
+      }
+    } catch (err) {
+      console.error("generateVisual error:", err);
+    } finally {
+      setVisualGenerating(false);
+    }
+  }
+
+  async function removeVisual(step: Step) {
+    const visual = visualMap.get(step.id);
+    if (!visual) return;
+    await supabase.from("visuals").delete().eq("id", visual.id);
+    await supabase.from("steps").update({ visual_id: null }).eq("id", step.id);
+    setVisualMap((prev) => { const m = new Map(prev); m.delete(step.id); return m; });
+    setSteps((prev) => prev.map((s) => (s.id === step.id ? { ...s, visual_id: null } : s)));
   }
 
   // ---------------------------------------------------------------------------
@@ -1472,6 +1545,22 @@ export default function OverviewMode({
 
         <div className="flex items-center gap-3 min-w-[160px] justify-end">
           <button
+            onClick={() => setStoryboardVisible((v) => !v)}
+            className={`inline-flex items-center gap-1.5 text-xs transition-colors px-2.5 py-1 rounded-lg ${
+              storyboardVisible
+                ? "bg-violet-100 text-violet-600 hover:bg-violet-200"
+                : "text-neutral-400 hover:text-neutral-600"
+            }`}
+          >
+            <Film className="w-3.5 h-3.5" />
+            Storyboard
+            {visualMap.size > 0 && (
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${storyboardVisible ? "bg-violet-200 text-violet-700" : "bg-neutral-100 text-neutral-500"}`}>
+                {visualMap.size}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => {
               setNotesVisible((v) => !v);
               setCellNotesExpanded(new Set());
@@ -1781,6 +1870,69 @@ export default function OverviewMode({
                   <Plus className="w-5 h-5" />
                   <span className="text-[10px] font-semibold uppercase tracking-wide">Add step</span>
                 </button>
+              </div>
+            </div>
+
+            {/* ---------------------------------------------------------------- */}
+            {/* Storyboard row — slides in/out */}
+            {/* ---------------------------------------------------------------- */}
+            <div
+              className={`overflow-hidden transition-all duration-400 ease-in-out ${
+                storyboardVisible ? "max-h-[240px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="flex border-b-2 border-violet-100 bg-violet-50/40">
+                {/* Row label */}
+                <div
+                  style={{ width: LABEL_W, minWidth: LABEL_W }}
+                  className="flex-shrink-0 flex items-center gap-2 px-4 py-3 border-r border-violet-100 bg-violet-50 sticky left-0 z-[5]"
+                >
+                  <Film className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-violet-500">Storyboard</span>
+                </div>
+                {/* Storyboard panels — one per column */}
+                {columns.map((col) => {
+                  const primaryStep = col.steps.find((s) => {
+                    const actor = (s.actor?.trim() || primaryUser).toLowerCase();
+                    return actorRolesMap[actor] === "customer" || actor === primaryUser.toLowerCase();
+                  }) ?? col.steps[0];
+                  const visual = visualMap.get(primaryStep.id);
+                  return (
+                    <div
+                      key={col.id}
+                      style={{ width: CELL_W, minWidth: CELL_W, height: 180 }}
+                      className="flex-shrink-0 border-r border-violet-100 p-1.5"
+                    >
+                      {visual ? (
+                        <div
+                          className="relative w-full h-full rounded-xl overflow-hidden cursor-pointer group/panel"
+                          onClick={() => openFlyout({ type: "visual", step: primaryStep })}
+                        >
+                          <Image
+                            src={visual.url}
+                            alt={primaryStep.title}
+                            fill
+                            className="object-cover"
+                            sizes={`${CELL_W}px`}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover/panel:bg-black/20 transition-colors flex items-center justify-center">
+                            <RefreshCw className="w-5 h-5 text-white opacity-0 group-hover/panel:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => openFlyout({ type: "visual", step: primaryStep })}
+                          className="w-full h-full rounded-xl border-2 border-dashed border-violet-200 flex flex-col items-center justify-center gap-1.5 text-violet-300 hover:border-violet-400 hover:text-violet-500 hover:bg-violet-50 transition-colors group/genpanel"
+                        >
+                          <Plus className="w-5 h-5" />
+                          <span className="text-[9px] font-semibold uppercase tracking-wide">Generate</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Spacer to match Add step cell width */}
+                <div style={{ width: 148, minWidth: 148 }} className="flex-shrink-0" />
               </div>
             </div>
 
@@ -2208,6 +2360,17 @@ export default function OverviewMode({
                   </h3>
                 </>
               )}
+              {flyout.type === "visual" && (
+                <>
+                  <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <Film className="w-3 h-3" />
+                    Storyboard panel
+                  </p>
+                  <h3 className="text-base font-semibold text-neutral-900 leading-snug">
+                    {flyout.step.title}
+                  </h3>
+                </>
+              )}
             </div>
             <button
               onClick={closeFlyout}
@@ -2602,6 +2765,65 @@ export default function OverviewMode({
               </div>
             )}
 
+            {/* ---- Visual panel ---- */}
+            {flyout.type === "visual" && (() => {
+              const visual = visualMap.get(flyout.step.id);
+              return (
+                <div className="flex flex-col gap-4">
+                  {/* Image area */}
+                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200">
+                    {visualGenerating ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+                        <p className="text-xs text-neutral-400">Creating your Beano/Viz panel…</p>
+                      </div>
+                    ) : visual ? (
+                      <Image
+                        src={visual.url}
+                        alt={flyout.step.title}
+                        fill
+                        className="object-cover"
+                        sizes="372px"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-neutral-300">
+                        <Film className="w-8 h-8" />
+                        <p className="text-xs">No panel yet</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modification input */}
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1.5">
+                      {visual ? "Refine the panel" : "Optional: add a direction"}
+                    </label>
+                    <textarea
+                      value={visualModification}
+                      onChange={(e) => setVisualModification(e.target.value)}
+                      rows={2}
+                      placeholder={visual ? "e.g. make it more chaotic, add a queue…" : "e.g. show panic, busy office, sunny day…"}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100 resize-none transition-colors"
+                    />
+                  </div>
+
+                  {/* Regen button */}
+                  <button
+                    onClick={() => generateVisual(flyout.step, visualModification || null)}
+                    disabled={visualGenerating}
+                    className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {visualGenerating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    )}
+                    {visual ? "Regenerate panel" : "Generate panel"}
+                  </button>
+                </div>
+              );
+            })()}
+
           </div>
 
           {/* Fly-out footer */}
@@ -2702,6 +2924,28 @@ export default function OverviewMode({
                 Close
               </button>
             )}
+            {flyout.type === "visual" && (() => {
+              const visual = visualMap.get(flyout.step.id);
+              return (
+                <>
+                  <button
+                    onClick={closeFlyout}
+                    className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                  >
+                    {visual ? "Close" : "Discard"}
+                  </button>
+                  {visual && (
+                    <button
+                      onClick={async () => { await removeVisual(flyout.step); closeFlyout(); }}
+                      disabled={visualGenerating}
+                      className="ml-auto text-sm text-red-400 hover:text-red-600 disabled:opacity-50 transition-colors"
+                    >
+                      Remove panel
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

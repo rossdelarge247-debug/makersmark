@@ -22,6 +22,7 @@ export interface Step {
   actor?: string | null;
   location?: string | null;
   service_moment?: string | null;
+  visual_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +62,15 @@ export interface Note {
   content: string;
   source_type: "user" | "ai_response" | "ai_accept";
   parent_note_id: string | null;
+  created_at: string;
+}
+
+export interface Visual {
+  id: string;
+  blueprint_id: string;
+  step_id: string;
+  url: string;
+  prompt: string | null;
   created_at: string;
 }
 

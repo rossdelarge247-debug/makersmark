@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Film, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Visual } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,10 +96,13 @@ interface StoryboardStripProps {
   blueprint: Blueprint;
   editingStepId: string | null;
   scrollTrigger: number;
+  visualMap: Map<string, Visual>;
+  generatingVisualId: string | null;
   onSelectStep: (step: Step) => void;
   onAddStepForActor: (actor: string) => void;
   onInsertBefore: (colIndex: number, actor: string) => void;
   onDeleteStep: (stepId: string) => void;
+  onGenerateVisual: (step: Step) => void;
 }
 
 function StoryboardStrip({
@@ -106,10 +110,13 @@ function StoryboardStrip({
   blueprint,
   editingStepId,
   scrollTrigger,
+  visualMap,
+  generatingVisualId,
   onSelectStep,
   onAddStepForActor,
   onInsertBefore,
   onDeleteStep,
+  onGenerateVisual,
 }: StoryboardStripProps) {
   const primary = blueprint.primary_user?.trim() || "Primary user";
   const rows = groupStepsByActor(steps, primary);
@@ -221,6 +228,36 @@ function StoryboardStrip({
                               {step.title}
                             </p>
 
+                            {/* Visual thumbnail or generate indicator */}
+                            {(() => {
+                              const visual = visualMap.get(step.id);
+                              const isGenerating = generatingVisualId === step.id;
+                              if (isGenerating) {
+                                return (
+                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md bg-violet-100 flex items-center justify-center">
+                                    <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+                                  </div>
+                                );
+                              }
+                              if (visual) {
+                                return (
+                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md overflow-hidden border border-violet-200 shadow-sm">
+                                    <Image src={visual.url} alt="" fill className="object-cover" sizes="28px" />
+                                  </div>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); onGenerateVisual(step); }}
+                                  className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md border border-dashed border-neutral-200 bg-white hidden group-hover/card:flex items-center justify-center hover:border-violet-300 hover:bg-violet-50 transition-colors"
+                                  title="Generate storyboard panel"
+                                >
+                                  <Film className="w-3 h-3 text-neutral-300 hover:text-violet-400" />
+                                </button>
+                              );
+                            })()}
+
                             {/* Hover actions */}
                             <div className="absolute top-1.5 right-1.5 hidden group-hover/card:flex items-center gap-1">
                               <button
@@ -306,14 +343,21 @@ function StoryboardStrip({
 interface CaptureModeProps {
   blueprint: Blueprint;
   initialSteps: Step[];
+  initialVisuals: Visual[];
 }
 
-export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProps) {
+export default function CaptureMode({ blueprint, initialSteps, initialVisuals }: CaptureModeProps) {
   const router = useRouter();
   const supabase = createClient();
 
   // ---- State ----
   const [steps, setSteps] = useState<Step[]>(initialSteps);
+  const [visualMap, setVisualMap] = useState<Map<string, Visual>>(() => {
+    const m = new Map<string, Visual>();
+    for (const v of initialVisuals) m.set(v.step_id, v);
+    return m;
+  });
+  const [generatingVisualId, setGeneratingVisualId] = useState<string | null>(null);
   const [phase, setPhase] = useState<CapturePhase>("actor");
   const [isCapturing, setIsCapturing] = useState(false);
   const [phaseVisible, setPhaseVisible] = useState(true);
@@ -375,6 +419,37 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
         .map((s) => s.service_moment as string)
     )
   );
+
+  // Generate visual for a step (one-click, no modification prompt in capture mode)
+  async function handleGenerateVisual(step: Step) {
+    if (generatingVisualId) return;
+    setGeneratingVisualId(step.id);
+    try {
+      const res = await fetch("/api/generate-visual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId: step.id,
+          stepTitle: step.title,
+          stepDescription: step.description,
+          blueprintId: blueprint.id,
+          modification: null,
+        }),
+      });
+      const data = await res.json();
+      if (data.visual) {
+        setVisualMap((prev) => {
+          const m = new Map(prev);
+          m.set(step.id, data.visual as Visual);
+          return m;
+        });
+      }
+    } catch (err) {
+      console.error("generateVisual error:", err);
+    } finally {
+      setGeneratingVisualId(null);
+    }
+  }
 
   // Helper: is the current actor an internal (non-customer) actor?
   function isInternalActor(actor: string) {
@@ -803,10 +878,13 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
           blueprint={blueprint}
           editingStepId={capture.editingStepId}
           scrollTrigger={scrollTrigger}
+          visualMap={visualMap}
+          generatingVisualId={generatingVisualId}
           onSelectStep={startEdit}
           onAddStepForActor={(actor) => startCapture(actor)}
           onInsertBefore={handleInsertBefore}
           onDeleteStep={handleDeleteStep}
+          onGenerateVisual={handleGenerateVisual}
         />
       </div>
 
