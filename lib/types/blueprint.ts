@@ -17,6 +17,8 @@ export interface Step {
   title: string;
   description: string | null;
   order_index: number;
+  actor?: string | null;
+  location?: string | null;
   created_at: string;
   updated_at: string;
 }

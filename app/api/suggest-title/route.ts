@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { description } = await req.json();
+  const { description, actor, location } = await req.json();
 
   if (!description || typeof description !== "string") {
     return NextResponse.json({ error: "description is required" }, { status: 400 });
@@ -16,6 +16,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ title: fallback });
   }
 
+  // Build context-enriched prompt
+  const contextParts: string[] = [];
+  if (actor) contextParts.push(`Actor: ${actor}`);
+  if (location) contextParts.push(`Location: ${location}`);
+  const contextPrefix = contextParts.length > 0 ? `${contextParts.join(". ")}.\n\n` : "";
+  const fullContent = `${contextPrefix}${description}`;
+
   try {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey });
@@ -24,11 +31,11 @@ export async function POST(req: NextRequest) {
       model: "claude-haiku-4-5-20251001",
       max_tokens: 64,
       system:
-        "You are a service design assistant. Generate a short step title (4-8 words) in verb-first syntax that captures what happens at this service moment. Examples: 'User submits application form', 'System validates eligibility criteria', 'Agent calls applicant to confirm'. Return ONLY the title, no quotes, no explanation.",
+        "You are a service design assistant. Generate a short step title (4-8 words) in verb-first syntax that captures what happens at this service moment. If an actor is provided, make them the subject. Examples: 'User submits application form', 'System validates eligibility criteria', 'Agent calls applicant to confirm', 'Customer visits branch office'. Return ONLY the title, no quotes, no explanation.",
       messages: [
         {
           role: "user",
-          content: description,
+          content: fullContent,
         },
       ],
     });
