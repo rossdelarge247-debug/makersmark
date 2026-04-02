@@ -43,3 +43,22 @@ export interface Cell {
   content: string | null;
   updated_at: string;
 }
+
+export type NoteCategory =
+  | "assumption"
+  | "unknown"
+  | "research_insight"
+  | "pain_point"
+  | "data"
+  | "opportunity";
+
+export interface Note {
+  id: string;
+  blueprint_id: string;
+  target_type: "step" | "cell";
+  target_id: string;
+  category: NoteCategory;
+  content: string;
+  source_type: "user" | "ai_response" | "ai_accept";
+  created_at: string;
+}

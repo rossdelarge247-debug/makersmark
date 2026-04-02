@@ -14,9 +14,24 @@ import {
   MapPin,
   User,
   Trash2,
+  MessageSquare,
+  StickyNote,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step, Swimlane, Cell } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
+
+// ---------------------------------------------------------------------------
+// Note category config
+// ---------------------------------------------------------------------------
+
+const NOTE_CATEGORIES: Record<NoteCategory, { label: string; textCls: string; bgCls: string; dotCls: string }> = {
+  assumption:       { label: "Assumption",       textCls: "text-amber-700",  bgCls: "bg-amber-50 border-amber-200",   dotCls: "bg-amber-400" },
+  unknown:          { label: "Unknown",           textCls: "text-purple-700", bgCls: "bg-purple-50 border-purple-200", dotCls: "bg-purple-400" },
+  research_insight: { label: "Research insight",  textCls: "text-blue-700",   bgCls: "bg-blue-50 border-blue-200",     dotCls: "bg-blue-400" },
+  pain_point:       { label: "Pain point",        textCls: "text-red-700",    bgCls: "bg-red-50 border-red-200",       dotCls: "bg-red-400" },
+  data:             { label: "Data",              textCls: "text-teal-700",   bgCls: "bg-teal-50 border-teal-200",     dotCls: "bg-teal-400" },
+  opportunity:      { label: "Opportunity",       textCls: "text-green-700",  bgCls: "bg-green-50 border-green-200",   dotCls: "bg-green-400" },
+};
 
 // ---------------------------------------------------------------------------
 // Evidence icon inference
@@ -76,6 +91,7 @@ type FlyoutState =
   | { type: "cell"; step: Step; swimlane: Swimlane }
   | { type: "step"; step: Step }
   | { type: "add-swimlane" }
+  | { type: "all-notes" }
   | null;
 
 // ---------------------------------------------------------------------------
@@ -188,6 +204,155 @@ function stepForSwimlane(
 }
 
 // ---------------------------------------------------------------------------
+// NotesSection sub-component
+// ---------------------------------------------------------------------------
+
+interface NotesSectionProps {
+  notes: Note[];
+  targetType: "step" | "cell";
+  targetId: string | null;
+  noteAddMode: boolean;
+  noteEditId: string | null;
+  noteFormCategory: NoteCategory;
+  noteFormContent: string;
+  noteSaving: boolean;
+  onSetAddMode: (v: boolean) => void;
+  onSetCategory: (v: NoteCategory) => void;
+  onSetContent: (v: string) => void;
+  onSave: (targetType: "step" | "cell", targetId: string) => void;
+  onDelete: (id: string) => void;
+  onStartEdit: (note: Note) => void;
+  onCancelEdit: () => void;
+}
+
+function NotesSection({
+  notes,
+  targetType,
+  targetId,
+  noteAddMode,
+  noteEditId,
+  noteFormCategory,
+  noteFormContent,
+  noteSaving,
+  onSetAddMode,
+  onSetCategory,
+  onSetContent,
+  onSave,
+  onDelete,
+  onStartEdit,
+  onCancelEdit,
+}: NotesSectionProps) {
+  const showForm = noteAddMode || noteEditId !== null;
+
+  return (
+    <div className="pt-4 border-t border-neutral-100">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
+          <MessageSquare className="w-3.5 h-3.5" />
+          Notes {notes.length > 0 && <span className="text-orange-500">({notes.length})</span>}
+        </span>
+        {!showForm && targetId && (
+          <button
+            onClick={() => onSetAddMode(true)}
+            className="inline-flex items-center gap-1 text-[11px] text-neutral-400 hover:text-primary-600 transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            Add note
+          </button>
+        )}
+        {!showForm && !targetId && (
+          <span className="text-[10px] text-neutral-300">Save cell content first</span>
+        )}
+      </div>
+
+      {/* Existing notes */}
+      {notes.length > 0 && (
+        <div className="flex flex-col gap-2 mb-3">
+          {notes.map((note) => {
+            const cfg = NOTE_CATEGORIES[note.category];
+            const isEditing = noteEditId === note.id;
+            return (
+              <div key={note.id} className={`rounded-xl border p-3 ${cfg.bgCls} ${isEditing ? "ring-2 ring-primary-300" : ""}`}>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.textCls}`}>
+                    {cfg.label}
+                  </span>
+                  {!isEditing && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => onStartEdit(note)}
+                        className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors px-1"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => onDelete(note.id)}
+                        className="text-[10px] text-neutral-400 hover:text-red-500 transition-colors px-1"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className={`text-xs leading-relaxed ${cfg.textCls}`}>{note.content}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add / Edit form */}
+      {showForm && targetId && (
+        <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <div>
+            <p className="text-[10px] font-medium text-neutral-500 mb-1.5">Category</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.entries(NOTE_CATEGORIES) as [NoteCategory, typeof NOTE_CATEGORIES[NoteCategory]][]).map(([cat, cfg]) => (
+                <button
+                  key={cat}
+                  onClick={() => onSetCategory(cat)}
+                  className={`text-[10px] px-2 py-1 rounded-full border font-medium transition-colors ${
+                    noteFormCategory === cat
+                      ? `${cfg.bgCls} ${cfg.textCls} border-current`
+                      : "bg-white text-neutral-400 border-neutral-200 hover:border-neutral-400"
+                  }`}
+                >
+                  {cfg.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <textarea
+            autoFocus
+            value={noteFormContent}
+            onChange={(e) => onSetContent(e.target.value)}
+            rows={3}
+            placeholder="Add your note…"
+            className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100 resize-none bg-white transition-colors"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onSave(targetType, targetId)}
+              disabled={noteSaving || !noteFormContent.trim()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-white text-xs font-semibold hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {noteSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              {noteEditId ? "Update" : "Save note"}
+            </button>
+            <button
+              onClick={onCancelEdit}
+              className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -196,6 +361,7 @@ interface OverviewModeProps {
   initialSteps: Step[];
   initialSwimlanes: Swimlane[];
   initialCells: Cell[];
+  initialNotes: Note[];
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +373,7 @@ export default function OverviewMode({
   initialSteps,
   initialSwimlanes,
   initialCells,
+  initialNotes,
 }: OverviewModeProps) {
   const supabase = createClient();
 
@@ -248,6 +415,21 @@ export default function OverviewMode({
   const [newSwimlane, setNewSwimlane] = useState("");
   const [swimlaneSaving, setSwimlaneSaving] = useState(false);
   const [deletingSwimId, setDeletingSwimId] = useState<string | null>(null);
+
+  // ---- Notes state ----
+  const [notes, setNotes] = useState<Note[]>(initialNotes);
+  const [noteAddMode, setNoteAddMode] = useState(false);
+  const [noteEditId, setNoteEditId] = useState<string | null>(null);
+  const [noteFormCategory, setNoteFormCategory] = useState<NoteCategory>("assumption");
+  const [noteFormContent, setNoteFormContent] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [allNotesFilter, setAllNotesFilter] = useState<NoteCategory | "all">("all");
+
+  // Derived: count map keyed by target_id
+  const noteCountMap = new Map<string, number>();
+  for (const n of notes) {
+    noteCountMap.set(n.target_id, (noteCountMap.get(n.target_id) ?? 0) + 1);
+  }
 
   // ---------------------------------------------------------------------------
   // Auto-seed cells on first load
@@ -348,6 +530,7 @@ export default function OverviewMode({
     setFlyout(next);
     setFlyoutAiSuggestion("");
     setFlyoutAiLoading(false);
+    resetNoteForm();
 
     if (next?.type === "cell") {
       const k = cellKey(next.step.id, next.swimlane.id);
@@ -489,6 +672,68 @@ export default function OverviewMode({
   }
 
   // ---------------------------------------------------------------------------
+  // Note CRUD
+  // ---------------------------------------------------------------------------
+
+  function resetNoteForm() {
+    setNoteAddMode(false);
+    setNoteEditId(null);
+    setNoteFormCategory("assumption");
+    setNoteFormContent("");
+  }
+
+  async function saveNote(targetType: "step" | "cell", targetId: string) {
+    const content = noteFormContent.trim();
+    if (!content) return;
+    setNoteSaving(true);
+
+    if (noteEditId) {
+      // Update existing note
+      const { data } = await supabase
+        .from("notes")
+        .update({ category: noteFormCategory, content, updated_at: new Date().toISOString() })
+        .eq("id", noteEditId)
+        .select("*")
+        .single();
+      if (data) {
+        setNotes((prev) => prev.map((n) => (n.id === noteEditId ? (data as Note) : n)));
+      }
+    } else {
+      // Create new note
+      const { data } = await supabase
+        .from("notes")
+        .insert({
+          blueprint_id: blueprint.id,
+          target_type: targetType,
+          target_id: targetId,
+          category: noteFormCategory,
+          content,
+          source_type: "user",
+        })
+        .select("*")
+        .single();
+      if (data) {
+        setNotes((prev) => [...prev, data as Note]);
+      }
+    }
+
+    setNoteSaving(false);
+    resetNoteForm();
+  }
+
+  async function deleteNote(id: string) {
+    await supabase.from("notes").delete().eq("id", id);
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  }
+
+  function startEditNote(note: Note) {
+    setNoteEditId(note.id);
+    setNoteFormCategory(note.category);
+    setNoteFormContent(note.content);
+    setNoteAddMode(false);
+  }
+
+  // ---------------------------------------------------------------------------
   // Render helpers
   // ---------------------------------------------------------------------------
 
@@ -553,13 +798,27 @@ export default function OverviewMode({
           )}
         </div>
 
-        <Link
-          href={`/app/blueprints/${blueprint.id}/capture`}
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors min-w-[120px] justify-end"
-        >
-          Capture mode
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-3 min-w-[160px] justify-end">
+          <button
+            onClick={() => openFlyout({ type: "all-notes" })}
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            <StickyNote className="w-3.5 h-3.5" />
+            Notes
+            {notes.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold">
+                {notes.length}
+              </span>
+            )}
+          </button>
+          <Link
+            href={`/app/blueprints/${blueprint.id}/capture`}
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            Capture mode
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </nav>
 
       {/* ------------------------------------------------------------------ */}
@@ -639,11 +898,25 @@ export default function OverviewMode({
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
-                      {col.isServiceMoment && (
-                        <span className="text-[9px] font-medium text-neutral-300 bg-neutral-100 px-1.5 py-0.5 rounded">
-                          ⚙ {col.steps.length} step{col.steps.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const stepNoteCount = noteCountMap.get(primaryStep.id) ?? 0;
+                          return stepNoteCount > 0 ? (
+                            <span
+                              onClick={(e) => { e.stopPropagation(); openFlyout({ type: "step", step: primaryStep }); }}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold cursor-pointer hover:bg-orange-200 transition-colors"
+                            >
+                              <MessageSquare className="w-2 h-2" />
+                              {stepNoteCount}
+                            </span>
+                          ) : null;
+                        })()}
+                        {col.isServiceMoment && (
+                          <span className="text-[9px] font-medium text-neutral-300 bg-neutral-100 px-1.5 py-0.5 rounded">
+                            ⚙ {col.steps.length} step{col.steps.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[11px] font-semibold text-neutral-700 leading-snug line-clamp-2">
                       {col.title}
@@ -737,11 +1010,25 @@ export default function OverviewMode({
                       {cell?.content ? (
                         <>
                           <p className="text-[11px] text-neutral-600 leading-relaxed">{cell.content}</p>
-                          {isAiSeeded && (
-                            <span className="absolute bottom-1.5 right-2 opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                              <Sparkles className="w-2.5 h-2.5 text-primary-300" />
-                            </span>
-                          )}
+                          <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
+                            {(() => {
+                              const cellNoteCount = cell ? (noteCountMap.get(cell.id) ?? 0) : 0;
+                              return cellNoteCount > 0 ? (
+                                <span
+                                  onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-semibold cursor-pointer hover:bg-orange-200 transition-colors"
+                                >
+                                  <MessageSquare className="w-2 h-2" />
+                                  {cellNoteCount}
+                                </span>
+                              ) : null;
+                            })()}
+                            {isAiSeeded && (
+                              <span className="opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                                <Sparkles className="w-2.5 h-2.5 text-primary-300" />
+                              </span>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <div className="flex items-center justify-center h-full min-h-[60px]">
@@ -823,6 +1110,12 @@ export default function OverviewMode({
               )}
               {flyout.type === "add-swimlane" && (
                 <h3 className="text-base font-semibold text-neutral-900">Add swimlane</h3>
+              )}
+              {flyout.type === "all-notes" && (
+                <>
+                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Blueprint</p>
+                  <h3 className="text-base font-semibold text-neutral-900">All notes</h3>
+                </>
               )}
             </div>
             <button
@@ -944,6 +1237,31 @@ export default function OverviewMode({
                     </button>
                   )}
                 </div>
+
+                {/* Notes section */}
+                {(() => {
+                  const cellId = cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.id;
+                  const targetNotes = cellId ? notes.filter((n) => n.target_type === "cell" && n.target_id === cellId) : [];
+                  return (
+                    <NotesSection
+                      notes={targetNotes}
+                      targetType="cell"
+                      targetId={cellId ?? null}
+                      noteAddMode={noteAddMode}
+                      noteEditId={noteEditId}
+                      noteFormCategory={noteFormCategory}
+                      noteFormContent={noteFormContent}
+                      noteSaving={noteSaving}
+                      onSetAddMode={setNoteAddMode}
+                      onSetCategory={setNoteFormCategory}
+                      onSetContent={setNoteFormContent}
+                      onSave={saveNote}
+                      onDelete={deleteNote}
+                      onStartEdit={startEditNote}
+                      onCancelEdit={resetNoteForm}
+                    />
+                  );
+                })()}
               </div>
             )}
 
@@ -990,6 +1308,25 @@ export default function OverviewMode({
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
+
+                {/* Notes section */}
+                <NotesSection
+                  notes={notes.filter((n) => n.target_type === "step" && n.target_id === flyout.step.id)}
+                  targetType="step"
+                  targetId={flyout.step.id}
+                  noteAddMode={noteAddMode}
+                  noteEditId={noteEditId}
+                  noteFormCategory={noteFormCategory}
+                  noteFormContent={noteFormContent}
+                  noteSaving={noteSaving}
+                  onSetAddMode={setNoteAddMode}
+                  onSetCategory={setNoteFormCategory}
+                  onSetContent={setNoteFormContent}
+                  onSave={saveNote}
+                  onDelete={deleteNote}
+                  onStartEdit={startEditNote}
+                  onCancelEdit={resetNoteForm}
+                />
               </div>
             )}
 
@@ -1014,6 +1351,91 @@ export default function OverviewMode({
                 <p className="text-xs text-neutral-400">
                   The new row will appear below the existing swimlanes.
                 </p>
+              </div>
+            )}
+
+            {/* ---- All notes ---- */}
+            {flyout.type === "all-notes" && (
+              <div className="flex flex-col gap-4">
+                {/* Category filter chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setAllNotesFilter("all")}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                      allNotesFilter === "all"
+                        ? "bg-neutral-800 text-white border-neutral-800"
+                        : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400"
+                    }`}
+                  >
+                    All ({notes.length})
+                  </button>
+                  {(Object.entries(NOTE_CATEGORIES) as [NoteCategory, typeof NOTE_CATEGORIES[NoteCategory]][]).map(([cat, cfg]) => {
+                    const count = notes.filter((n) => n.category === cat).length;
+                    if (count === 0) return null;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setAllNotesFilter(cat)}
+                        className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                          allNotesFilter === cat
+                            ? `${cfg.bgCls} ${cfg.textCls} border-current`
+                            : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400"
+                        }`}
+                      >
+                        {cfg.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Notes list */}
+                {(() => {
+                  const filtered = allNotesFilter === "all" ? notes : notes.filter((n) => n.category === allNotesFilter);
+                  if (filtered.length === 0) {
+                    return (
+                      <p className="text-xs text-neutral-400 text-center py-6">
+                        No notes yet. Open a step or cell to add notes.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col gap-3">
+                      {filtered.map((note) => {
+                        const cfg = NOTE_CATEGORIES[note.category];
+                        // Resolve target label
+                        let targetLabel = "Unknown";
+                        if (note.target_type === "step") {
+                          const s = steps.find((st) => st.id === note.target_id);
+                          targetLabel = s ? `Step: ${s.title}` : "Step";
+                        } else {
+                          // Find the cell and its swimlane
+                          let found = false;
+                          cellMap.forEach((c, k) => {
+                            if (c.id === note.target_id) {
+                              const parts = k.split(":");
+                              const sw = swimlanes.find((s) => s.id === parts[1]);
+                              const st = steps.find((s) => s.id === parts[0]);
+                              if (sw && st) targetLabel = `${sw.name} — ${st.title}`;
+                              found = true;
+                            }
+                          });
+                          if (!found) targetLabel = "Cell";
+                        }
+                        return (
+                          <div key={note.id} className={`rounded-xl border p-3 ${cfg.bgCls}`}>
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className={`text-[10px] font-semibold uppercase tracking-wide ${cfg.textCls}`}>
+                                {cfg.label}
+                              </span>
+                              <span className="text-[10px] text-neutral-400 truncate max-w-[140px]">{targetLabel}</span>
+                            </div>
+                            <p className={`text-xs leading-relaxed ${cfg.textCls}`}>{note.content}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1057,6 +1479,14 @@ export default function OverviewMode({
               </>
             )}
             {flyout.type === "step" && (
+              <button
+                onClick={closeFlyout}
+                className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                Close
+              </button>
+            )}
+            {flyout.type === "all-notes" && (
               <button
                 onClick={closeFlyout}
                 className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"

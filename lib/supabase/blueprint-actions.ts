@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Blueprint, Step, Swimlane, Cell } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
 
 // Re-export types for consumers that import them from this module
-export type { Blueprint, Step, Swimlane, Cell };
+export type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory };
 
 // ---------------------------------------------------------------------------
 // Default swimlanes
@@ -507,4 +507,29 @@ export async function getCellsForBlueprint(
   }
 
   return (data ?? []) as Cell[];
+}
+
+// ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches all notes for a blueprint, ordered oldest first.
+ */
+export async function getNotesForBlueprint(
+  blueprintId: string
+): Promise<Note[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("notes")
+    .select("*")
+    .eq("blueprint_id", blueprintId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as Note[];
 }

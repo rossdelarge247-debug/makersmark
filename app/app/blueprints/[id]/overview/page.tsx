@@ -4,6 +4,7 @@ import {
   getStepsForBlueprint,
   getSwimlanesForBlueprint,
   getCellsForBlueprint,
+  getNotesForBlueprint,
 } from "@/lib/supabase/blueprint-actions";
 import OverviewMode from "./OverviewMode";
 
@@ -14,11 +15,12 @@ interface OverviewPageProps {
 export default async function OverviewPage({ params }: OverviewPageProps) {
   const { id } = await params;
 
-  const [blueprint, steps, swimlanes, cells] = await Promise.all([
+  const [blueprint, steps, swimlanes, cells, notes] = await Promise.all([
     getBlueprintById(id),
     getStepsForBlueprint(id),
     getSwimlanesForBlueprint(id),
     getCellsForBlueprint(id),
+    getNotesForBlueprint(id),
   ]);
 
   if (!blueprint) {
@@ -31,6 +33,7 @@ export default async function OverviewPage({ params }: OverviewPageProps) {
       initialSteps={steps}
       initialSwimlanes={swimlanes}
       initialCells={cells}
+      initialNotes={notes}
     />
   );
 }
