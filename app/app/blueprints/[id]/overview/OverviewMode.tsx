@@ -211,6 +211,30 @@ function stepForSwimlane(
 }
 
 // ---------------------------------------------------------------------------
+// Relative time helper
+// ---------------------------------------------------------------------------
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Role display config
+const ROLE_STYLE: Record<"customer" | "frontstage" | "backstage", { label: string; cls: string }> = {
+  customer:   { label: "Customer",   cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  frontstage: { label: "Frontstage", cls: "bg-violet-50 text-violet-700 border-violet-200" },
+  backstage:  { label: "Backstage",  cls: "bg-amber-50 text-amber-700 border-amber-200" },
+};
+
+// ---------------------------------------------------------------------------
 // NotesSection sub-component
 // ---------------------------------------------------------------------------
 
@@ -410,6 +434,15 @@ export default function OverviewMode({
   const [titleSaving, setTitleSaving] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // ---- Scenario editing ----
+  const [scenarioEditing, setScenarioEditing] = useState(false);
+  const [scenarioValue, setScenarioValue] = useState(blueprint.scenario ?? "");
+  const [scenarioSaving, setScenarioSaving] = useState(false);
+  const scenarioInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // ---- Last edited tracking ----
+  const [lastEdited, setLastEdited] = useState(blueprint.updated_at);
+
   // ---- Fly-out state ----
   const [flyout, setFlyout] = useState<FlyoutState>(null);
   const [flyoutVisible, setFlyoutVisible] = useState(false);
@@ -536,12 +569,25 @@ export default function OverviewMode({
       return;
     }
     setTitleSaving(true);
-    await supabase
-      .from("blueprints")
-      .update({ title: trimmed, updated_at: new Date().toISOString() })
-      .eq("id", blueprint.id);
+    const now = new Date().toISOString();
+    await supabase.from("blueprints").update({ title: trimmed, updated_at: now }).eq("id", blueprint.id);
+    setLastEdited(now);
     setTitleSaving(false);
     setTitleEditing(false);
+  }
+
+  async function saveScenarioEdit() {
+    const trimmed = scenarioValue.trim();
+    setScenarioEditing(false);
+    if (trimmed === (blueprint.scenario ?? "")) return;
+    setScenarioSaving(true);
+    const now = new Date().toISOString();
+    await supabase
+      .from("blueprints")
+      .update({ scenario: trimmed || null, updated_at: now })
+      .eq("id", blueprint.id);
+    setLastEdited(now);
+    setScenarioSaving(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -977,16 +1023,75 @@ export default function OverviewMode({
       </nav>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Scenario strip */}
+      {/* Metadata bar — actors · scenario · last edited */}
       {/* ------------------------------------------------------------------ */}
-      {blueprint.scenario && (
-        <div className="flex-shrink-0 flex items-center justify-center px-6 py-2 bg-neutral-50 border-b border-neutral-100">
-          <p className="text-xs text-neutral-400 italic text-center max-w-2xl leading-relaxed">
-            <span className="font-medium text-neutral-500 not-italic">Scenario: </span>
-            {blueprint.scenario}
-          </p>
+      <div className="flex-shrink-0 flex items-start justify-between gap-4 px-6 py-2.5 bg-neutral-50 border-b border-neutral-100">
+
+        {/* Left: actor chips */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 min-w-[160px]">
+          {(() => {
+            const actors: { name: string; role: "customer" | "frontstage" | "backstage" }[] = [];
+            if (primaryUser) actors.push({ name: primaryUser, role: "customer" });
+            Object.entries(actorRolesMap).forEach(([name, role]) => {
+              if (name !== primaryUser.toLowerCase()) actors.push({ name, role });
+            });
+            if (actors.length === 0) return <span className="text-[10px] text-neutral-300">No actors yet</span>;
+            return actors.map(({ name, role }) => {
+              const s = ROLE_STYLE[role];
+              return (
+                <span key={name} className={`inline-flex flex-col items-start px-2 py-0.5 rounded-lg border text-[10px] font-medium leading-tight ${s.cls}`}>
+                  <span className="capitalize">{name}</span>
+                  <span className="text-[9px] opacity-60 font-normal">{s.label}</span>
+                </span>
+              );
+            });
+          })()}
         </div>
-      )}
+
+        {/* Centre: scenario (editable) */}
+        <div className="flex-1 flex justify-center">
+          {scenarioEditing ? (
+            <div className="flex flex-col items-center gap-1.5 w-full max-w-xl">
+              <textarea
+                ref={scenarioInputRef}
+                value={scenarioValue}
+                onChange={(e) => setScenarioValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveScenarioEdit(); } if (e.key === "Escape") { setScenarioEditing(false); setScenarioValue(blueprint.scenario ?? ""); } }}
+                rows={2}
+                placeholder="Describe the scenario for this blueprint…"
+                className="w-full text-xs text-neutral-700 italic bg-white border border-primary-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-200 resize-none text-center"
+              />
+              <div className="flex items-center gap-2">
+                <button onClick={saveScenarioEdit} disabled={scenarioSaving} className="text-[10px] px-2.5 py-1 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                  {scenarioSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+                </button>
+                <button onClick={() => { setScenarioEditing(false); setScenarioValue(blueprint.scenario ?? ""); }} className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="group/scenario flex items-start gap-1.5 cursor-pointer max-w-xl text-center"
+              onClick={() => { setScenarioEditing(true); setTimeout(() => scenarioInputRef.current?.focus(), 30); }}
+            >
+              {scenarioValue ? (
+                <p className="text-xs text-neutral-400 italic leading-relaxed">
+                  <span className="font-medium text-neutral-500 not-italic">Scenario: </span>
+                  {scenarioValue}
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-300 italic">+ Add scenario…</p>
+              )}
+              <Pencil className="w-3 h-3 text-neutral-300 opacity-0 group-hover/scenario:opacity-100 flex-shrink-0 mt-0.5 transition-opacity" />
+            </div>
+          )}
+        </div>
+
+        {/* Right: last edited */}
+        <div className="text-[10px] text-neutral-400 whitespace-nowrap pt-0.5 min-w-[80px] text-right">
+          Edited {formatRelativeTime(lastEdited)}
+        </div>
+
+      </div>
 
       {/* ------------------------------------------------------------------ */}
       {/* Seeding banner */}
