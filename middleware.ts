@@ -1,7 +1,19 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // If an auth code lands on the root page, redirect to the dedicated
+  // auth-processing page before the landing page ever renders.
+  // Safe with implicit flow — no PKCE verifier to lose.
+  const code = searchParams.get("code");
+  if (code && pathname === "/") {
+    const processingUrl = request.nextUrl.clone();
+    processingUrl.pathname = "/auth/processing";
+    return NextResponse.redirect(processingUrl);
+  }
+
   return await updateSession(request);
 }
 

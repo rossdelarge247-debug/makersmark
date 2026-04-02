@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import {
   Map,
   Layers,
@@ -8,14 +7,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import AuthCodeHandler from "./AuthCodeHandler";
 
 export default function LandingPage() {
   return (
     <>
-      <Suspense fallback={null}>
-        <AuthCodeHandler />
-      </Suspense>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100 text-xs font-medium text-primary-700 mb-8">
