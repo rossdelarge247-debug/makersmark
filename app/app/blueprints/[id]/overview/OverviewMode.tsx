@@ -470,6 +470,7 @@ export default function OverviewMode({
   // ---- Service moment column management ----
   const [deletingColId, setDeletingColId] = useState<string | null>(null);
   const [colActionBusy, setColActionBusy] = useState(false);
+  const [hoveredColId, setHoveredColId] = useState<string | null>(null);
 
   // ---- Drag state ----
   type DragSource = { k: CellKey; step: Step; swimlane: Swimlane };
@@ -1176,6 +1177,8 @@ export default function OverviewMode({
                         ? "bg-neutral-50 hover:bg-neutral-100"
                         : "bg-white hover:bg-neutral-50"
                     }`}
+                    onMouseEnter={() => col.isServiceMoment && setHoveredColId(col.id)}
+                    onMouseLeave={() => setHoveredColId(null)}
                     onClick={() => openFlyout({ type: "step", step: primaryStep })}
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
@@ -1217,7 +1220,10 @@ export default function OverviewMode({
 
                     {/* Service moment column controls */}
                     {col.isServiceMoment && (
-                      <div className="mt-2 pt-1.5 border-t border-neutral-200 opacity-0 group-hover/steph:opacity-100 transition-opacity flex items-center justify-between">
+                      <div
+                        className="mt-2 pt-1.5 border-t border-neutral-200 flex items-center justify-between transition-opacity duration-150"
+                        style={{ opacity: hoveredColId === col.id || deletingColId === col.id ? 1 : 0 }}
+                      >
                         {/* Move left */}
                         <button
                           disabled={i === 0 || colActionBusy}
