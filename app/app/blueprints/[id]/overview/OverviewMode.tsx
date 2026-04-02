@@ -24,10 +24,12 @@ import {
   Zap,
   Database,
   Star,
+  Brain,
+  Reply,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory } from "@/lib/types/blueprint";
+import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, AISuggestionItem, InterrogationGroupType } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
 // Note category config
@@ -40,6 +42,29 @@ const NOTE_CATEGORIES: Record<NoteCategory, { label: string; textCls: string; bg
   pain_point:       { label: "Pain point",       textCls: "text-red-700",    bgCls: "bg-red-50 border-red-200",       dotCls: "bg-red-400",    icon: Zap },
   data:             { label: "Data",             textCls: "text-teal-700",   bgCls: "bg-teal-50 border-teal-200",     dotCls: "bg-teal-400",   icon: Database },
   opportunity:      { label: "Opportunity",      textCls: "text-green-700",  bgCls: "bg-green-50 border-green-200",   dotCls: "bg-green-400",  icon: Star },
+};
+
+// ---------------------------------------------------------------------------
+// Interrogation group config
+// ---------------------------------------------------------------------------
+
+const INTERROGATION_GROUPS: Record<
+  InterrogationGroupType,
+  { label: string; icon: LucideIcon; bgCls: string; textCls: string; borderCls: string }
+> = {
+  consideration:    { label: "Missing considerations", icon: HelpCircle,   bgCls: "bg-amber-50",  textCls: "text-amber-700",  borderCls: "border-amber-200"  },
+  research_question:{ label: "Research questions",     icon: Search,        bgCls: "bg-blue-50",   textCls: "text-blue-700",   borderCls: "border-blue-200"   },
+  assumption:       { label: "Assumptions to validate",icon: AlertCircle,   bgCls: "bg-purple-50", textCls: "text-purple-700", borderCls: "border-purple-200" },
+  risk:             { label: "Risks & dependencies",   icon: Zap,           bgCls: "bg-red-50",    textCls: "text-red-700",    borderCls: "border-red-200"    },
+  opportunity:      { label: "Opportunities",          icon: Star,          bgCls: "bg-green-50",  textCls: "text-green-700",  borderCls: "border-green-200"  },
+};
+
+const GROUP_TO_NOTE_CATEGORY: Record<InterrogationGroupType, NoteCategory> = {
+  consideration:     "assumption",
+  research_question: "unknown",
+  assumption:        "assumption",
+  risk:              "pain_point",
+  opportunity:       "opportunity",
 };
 
 // ---------------------------------------------------------------------------
@@ -101,6 +126,7 @@ type FlyoutState =
   | { type: "step"; step: Step }
   | { type: "add-swimlane" }
   | { type: "actor"; name: string; role: "customer" | "frontstage" | "backstage" }
+  | { type: "interrogation"; targetType: "step" | "cell"; step: Step; swimlane?: Swimlane }
   | null;
 
 // ---------------------------------------------------------------------------
@@ -469,6 +495,13 @@ export default function OverviewMode({
   const [cellNotesExpanded, setCellNotesExpanded] = useState<Set<string>>(new Set());
   const [stepNotesExpanded, setStepNotesExpanded] = useState<Set<string>>(new Set());
 
+  // ---- Interrogation state ----
+  const [interrogationLoading, setInterrogationLoading] = useState(false);
+  const [interrogationItems, setInterrogationItems] = useState<AISuggestionItem[]>([]);
+  const [respondingItemId, setRespondingItemId] = useState<string | null>(null);
+  const [respondText, setRespondText] = useState("");
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+
   // ---- Service moment column management ----
   const [deleteColConfirm, setDeleteColConfirm] = useState<ColumnDef | null>(null);
   const [colActionBusy, setColActionBusy] = useState(false);
@@ -635,6 +668,83 @@ export default function OverviewMode({
       setNewSwimlane("");
     }
 
+    if (next?.type === "interrogation") {
+      setInterrogationLoading(true);
+      setInterrogationItems([]);
+      setRespondingItemId(null);
+      setRespondText("");
+
+      const targetType = next.targetType;
+      const targetContent =
+        targetType === "cell"
+          ? cellMap.get(cellKey(next.step.id, next.swimlane?.id ?? ""))?.content ?? ""
+          : next.step.description ?? "";
+
+      const nearbyContext = steps
+        .filter((s) => s.id !== next.step.id)
+        .slice(0, 5)
+        .map((s) => ({ stepTitle: s.title }));
+
+      fetch("/api/interrogate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType,
+          targetContent,
+          stepTitle: next.step.title,
+          swimlaneName: next.swimlane?.name,
+          blueprintContext: {
+            title: blueprint.title,
+            user_goal: blueprint.user_goal,
+            primary_user: blueprint.primary_user,
+            scenario: blueprint.scenario,
+          },
+          nearbyContext,
+        }),
+      })
+        .then((r) => r.json())
+        .then(async (data: { items: { group_type: string; content: string }[] }) => {
+          if (!data.items?.length) return;
+
+          const targetId =
+            targetType === "cell"
+              ? (cellMap.get(cellKey(next.step.id, next.swimlane?.id ?? ""))?.id ?? next.step.id)
+              : next.step.id;
+
+          const { data: interrogation } = await supabase
+            .from("ai_interrogations")
+            .insert({
+              blueprint_id: blueprint.id,
+              target_type: targetType,
+              target_id: targetId,
+            })
+            .select("id")
+            .single();
+
+          const iId = interrogation?.id as string | undefined;
+          if (!iId) return;
+
+          const rows = data.items.map((item) => ({
+            interrogation_id: iId,
+            blueprint_id: blueprint.id,
+            group_type: item.group_type,
+            content: item.content,
+            status: "new",
+          }));
+
+          const { data: savedItems } = await supabase
+            .from("ai_suggestion_items")
+            .insert(rows)
+            .select("*");
+
+          if (savedItems) {
+            setInterrogationItems(savedItems as AISuggestionItem[]);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setInterrogationLoading(false));
+    }
+
     // Animate in
     setTimeout(() => setFlyoutVisible(true), 10);
   }
@@ -645,6 +755,9 @@ export default function OverviewMode({
       setFlyout(null);
       setFlyoutContent("");
       setFlyoutAiSuggestion("");
+      setInterrogationItems([]);
+      setRespondingItemId(null);
+      setRespondText("");
     }, 300);
   }, []);
 
@@ -868,6 +981,145 @@ export default function OverviewMode({
     setNoteFormCategory(note.category);
     setNoteFormContent(note.content);
     setNoteAddMode(false);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Interrogation actions
+  // ---------------------------------------------------------------------------
+
+  async function acceptItemAsNote(
+    item: AISuggestionItem,
+    targetType: "step" | "cell",
+    targetId: string
+  ) {
+    if (!targetId || savingItemId) return;
+    setSavingItemId(item.id);
+
+    const category = GROUP_TO_NOTE_CATEGORY[item.group_type];
+    const { data: note } = await supabase
+      .from("notes")
+      .insert({
+        blueprint_id: blueprint.id,
+        target_type: targetType,
+        target_id: targetId,
+        category,
+        content: item.content,
+        source_type: "ai_accept",
+      })
+      .select("*")
+      .single();
+
+    if (note) setNotes((prev) => [...prev, note as Note]);
+
+    const noteId = (note as Note | null)?.id;
+    await supabase
+      .from("ai_suggestion_items")
+      .update({ status: "accepted", saved_note_id: noteId ?? null })
+      .eq("id", item.id);
+
+    setInterrogationItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, status: "accepted" as const, saved_note_id: noteId ?? null } : i
+      )
+    );
+    setSavingItemId(null);
+  }
+
+  async function acceptAllItems(targetType: "step" | "cell", targetId: string) {
+    const newItems = interrogationItems.filter((i) => i.status === "new");
+    for (const item of newItems) {
+      await acceptItemAsNote(item, targetType, targetId);
+    }
+  }
+
+  async function dismissItem(item: AISuggestionItem) {
+    if (savingItemId) return;
+    setSavingItemId(item.id);
+    await supabase
+      .from("ai_suggestion_items")
+      .update({ status: "dismissed" })
+      .eq("id", item.id);
+    setInterrogationItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, status: "dismissed" as const } : i))
+    );
+    setSavingItemId(null);
+  }
+
+  async function saveResponse(
+    item: AISuggestionItem,
+    targetType: "step" | "cell",
+    targetId: string,
+    saveMode: "note" | "cell" | "both"
+  ) {
+    const text = respondText.trim();
+    if (!text || savingItemId) return;
+    setSavingItemId(item.id);
+
+    let savedNoteId: string | undefined;
+    let savedCellId: string | undefined;
+
+    if (saveMode === "note" || saveMode === "both") {
+      const category = GROUP_TO_NOTE_CATEGORY[item.group_type];
+      const { data: note } = await supabase
+        .from("notes")
+        .insert({
+          blueprint_id: blueprint.id,
+          target_type: targetType,
+          target_id: targetId,
+          category,
+          content: text,
+          source_type: "ai_response",
+        })
+        .select("*")
+        .single();
+      if (note) {
+        setNotes((prev) => [...prev, note as Note]);
+        savedNoteId = (note as Note).id;
+      }
+    }
+
+    if ((saveMode === "cell" || saveMode === "both") && flyout?.type === "interrogation" && flyout.swimlane) {
+      const { data: cellData } = await supabase
+        .from("cells")
+        .upsert(
+          {
+            blueprint_id: blueprint.id,
+            step_id: flyout.step.id,
+            swimlane_id: flyout.swimlane.id,
+            content: text,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "step_id,swimlane_id" }
+        )
+        .select("*")
+        .single();
+      if (cellData) {
+        const k = cellKey(flyout.step.id, flyout.swimlane.id);
+        setCellMap((prev) => { const m = new Map(prev); m.set(k, cellData as Cell); return m; });
+        savedCellId = (cellData as Cell).id;
+      }
+    }
+
+    await supabase
+      .from("ai_suggestion_items")
+      .update({
+        status: "responded",
+        response_text: text,
+        saved_note_id: savedNoteId ?? null,
+        saved_cell_id: savedCellId ?? null,
+      })
+      .eq("id", item.id);
+
+    setInterrogationItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? { ...i, status: "responded" as const, response_text: text }
+          : i
+      )
+    );
+    setRespondingItemId(null);
+    setRespondText("");
+    setSavingItemId(null);
   }
 
   // ---------------------------------------------------------------------------
@@ -1725,6 +1977,16 @@ export default function OverviewMode({
                   <h3 className="text-base font-semibold text-neutral-900 capitalize">{flyout.name}</h3>
                 </>
               )}
+              {flyout.type === "interrogation" && (
+                <>
+                  <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest mb-1">
+                    AI Interrogation — {flyout.targetType === "cell" ? flyout.swimlane?.name : "Step"}
+                  </p>
+                  <h3 className="text-base font-semibold text-neutral-900 leading-snug">
+                    {flyout.step.title}
+                  </h3>
+                </>
+              )}
             </div>
             <button
               onClick={closeFlyout}
@@ -1954,6 +2216,169 @@ export default function OverviewMode({
               </div>
             )}
 
+            {/* ---- Interrogation panel ---- */}
+            {flyout.type === "interrogation" && (() => {
+              const targetType = flyout.targetType;
+              const targetId =
+                targetType === "cell"
+                  ? (cellMap.get(cellKey(flyout.step.id, flyout.swimlane?.id ?? ""))?.id ?? flyout.step.id)
+                  : flyout.step.id;
+              const newItems = interrogationItems.filter((i) => i.status === "new");
+
+              return (
+                <div className="flex flex-col gap-5">
+                  {interrogationLoading && (
+                    <div className="flex flex-col items-center justify-center py-10 gap-3">
+                      <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+                      <p className="text-sm text-neutral-400">Analysing this moment…</p>
+                    </div>
+                  )}
+
+                  {!interrogationLoading && interrogationItems.length === 0 && (
+                    <p className="text-sm text-neutral-400 py-6 text-center">No suggestions generated.</p>
+                  )}
+
+                  {!interrogationLoading && interrogationItems.length > 0 && (
+                    <>
+                      {/* Accept all */}
+                      {newItems.length > 1 && (
+                        <button
+                          onClick={() => acceptAllItems(targetType, targetId)}
+                          disabled={!!savingItemId}
+                          className="inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-xs font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50 transition-colors"
+                        >
+                          <Check className="w-3 h-3" />
+                          Accept all as notes ({newItems.length})
+                        </button>
+                      )}
+
+                      {/* Groups */}
+                      {(Object.keys(INTERROGATION_GROUPS) as InterrogationGroupType[]).map((group) => {
+                        const groupItems = interrogationItems.filter((i) => i.group_type === group);
+                        if (!groupItems.length) return null;
+                        const cfg = INTERROGATION_GROUPS[group];
+                        const Icon = cfg.icon;
+                        return (
+                          <div key={group} className="flex flex-col gap-2">
+                            <div className={`flex items-center gap-1.5 ${cfg.textCls}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                              <span className="text-xs font-semibold uppercase tracking-wide">
+                                {cfg.label}
+                              </span>
+                            </div>
+                            {groupItems.map((item) => {
+                              const isResponding = respondingItemId === item.id;
+                              const isSaving = savingItemId === item.id;
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`rounded-xl border p-3 ${cfg.bgCls} ${cfg.borderCls} ${
+                                    item.status === "dismissed" ? "opacity-40" : ""
+                                  }`}
+                                >
+                                  <p className={`text-xs leading-relaxed mb-2 ${cfg.textCls}`}>
+                                    {item.content}
+                                  </p>
+
+                                  {/* Status badge */}
+                                  {item.status !== "new" && !isResponding && (
+                                    <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-1 ${
+                                      item.status === "accepted"  ? "bg-green-100 text-green-700" :
+                                      item.status === "responded" ? "bg-blue-100 text-blue-700" :
+                                      "bg-neutral-100 text-neutral-400"
+                                    }`}>
+                                      {item.status === "accepted" ? "Saved as note" : item.status === "responded" ? "Responded" : "Dismissed"}
+                                    </span>
+                                  )}
+
+                                  {/* Response input */}
+                                  {isResponding && (
+                                    <div className="flex flex-col gap-2 mt-1">
+                                      <textarea
+                                        autoFocus
+                                        value={respondText}
+                                        onChange={(e) => setRespondText(e.target.value)}
+                                        rows={3}
+                                        placeholder="Your response…"
+                                        className="w-full px-2.5 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-800 placeholder:text-neutral-300 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 resize-none bg-white transition-colors"
+                                      />
+                                      <div className="flex flex-wrap gap-1.5">
+                                        <button
+                                          onClick={() => saveResponse(item, targetType, targetId, "note")}
+                                          disabled={isSaving || !respondText.trim()}
+                                          className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-neutral-800 text-white hover:bg-neutral-900 disabled:opacity-50 transition-colors"
+                                        >
+                                          {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                          Save as note
+                                        </button>
+                                        {targetType === "cell" && (
+                                          <>
+                                            <button
+                                              onClick={() => saveResponse(item, targetType, targetId, "cell")}
+                                              disabled={isSaving || !respondText.trim()}
+                                              className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+                                            >
+                                              Save to cell
+                                            </button>
+                                            <button
+                                              onClick={() => saveResponse(item, targetType, targetId, "both")}
+                                              disabled={isSaving || !respondText.trim()}
+                                              className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+                                            >
+                                              Save both
+                                            </button>
+                                          </>
+                                        )}
+                                        <button
+                                          onClick={() => { setRespondingItemId(null); setRespondText(""); }}
+                                          className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors px-1"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Item actions — only for new items */}
+                                  {item.status === "new" && !isResponding && (
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                      <button
+                                        onClick={() => acceptItemAsNote(item, targetType, targetId)}
+                                        disabled={!!savingItemId}
+                                        className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-600 hover:border-green-300 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+                                      >
+                                        {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={() => { setRespondingItemId(item.id); setRespondText(""); }}
+                                        disabled={!!savingItemId}
+                                        className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                                      >
+                                        <Reply className="w-3 h-3" />
+                                        Respond
+                                      </button>
+                                      <button
+                                        onClick={() => dismissItem(item)}
+                                        disabled={!!savingItemId}
+                                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg text-neutral-300 hover:text-neutral-500 disabled:opacity-50 transition-colors"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ---- Add swimlane ---- */}
             {flyout.type === "add-swimlane" && (
               <div className="flex flex-col gap-4">
@@ -1999,11 +2424,19 @@ export default function OverviewMode({
                 >
                   Cancel
                 </button>
+                <button
+                  onClick={() => openFlyout({ type: "interrogation", targetType: "cell", step: flyout.step, swimlane: flyout.swimlane })}
+                  disabled={flyoutSaving}
+                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-violet-600 hover:bg-violet-50 disabled:opacity-50 transition-colors"
+                >
+                  <Brain className="w-3.5 h-3.5" />
+                  Interrogate
+                </button>
                 {cellMap.get(cellKey(flyout.step.id, flyout.swimlane.id))?.content && (
                   <button
                     onClick={deleteCell}
                     disabled={flyoutSaving}
-                    className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear
@@ -2030,6 +2463,23 @@ export default function OverviewMode({
               </>
             )}
             {flyout.type === "step" && (
+              <>
+                <button
+                  onClick={() => openFlyout({ type: "interrogation", targetType: "step", step: flyout.step })}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+                >
+                  <Brain className="w-3.5 h-3.5" />
+                  Interrogate
+                </button>
+                <button
+                  onClick={closeFlyout}
+                  className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                  Close
+                </button>
+              </>
+            )}
+            {flyout.type === "actor" && (
               <button
                 onClick={closeFlyout}
                 className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
@@ -2037,7 +2487,7 @@ export default function OverviewMode({
                 Close
               </button>
             )}
-            {flyout.type === "actor" && (
+            {flyout.type === "interrogation" && (
               <button
                 onClick={closeFlyout}
                 className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"

@@ -62,3 +62,31 @@ export interface Note {
   source_type: "user" | "ai_response" | "ai_accept";
   created_at: string;
 }
+
+export type InterrogationGroupType =
+  | "consideration"
+  | "research_question"
+  | "assumption"
+  | "risk"
+  | "opportunity";
+
+export interface AIInterrogation {
+  id: string;
+  blueprint_id: string;
+  target_type: "step" | "cell";
+  target_id: string;
+  created_at: string;
+}
+
+export interface AISuggestionItem {
+  id: string;
+  interrogation_id: string;
+  blueprint_id: string;
+  group_type: InterrogationGroupType;
+  content: string;
+  status: "new" | "accepted" | "responded" | "dismissed";
+  response_text: string | null;
+  saved_note_id: string | null;
+  saved_cell_id: string | null;
+  created_at: string;
+}
