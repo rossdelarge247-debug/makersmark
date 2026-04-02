@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step } from "@/lib/types/blueprint";
 
@@ -93,38 +93,75 @@ interface StoryboardStripProps {
   steps: Step[];
   blueprint: Blueprint;
   editingStepId: string | null;
+  scrollTrigger: number;
   onSelectStep: (step: Step) => void;
   onAddStepForActor: (actor: string) => void;
+  onInsertBefore: (colIndex: number, actor: string) => void;
+  onDeleteStep: (stepId: string) => void;
 }
 
 function StoryboardStrip({
   steps,
   blueprint,
   editingStepId,
+  scrollTrigger,
   onSelectStep,
   onAddStepForActor,
+  onInsertBefore,
+  onDeleteStep,
 }: StoryboardStripProps) {
   const primary = blueprint.primary_user?.trim() || "Primary user";
   const rows = groupStepsByActor(steps, primary);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const CARD_W = 160; // fixed column width in px
+  const CARD_W = 160;
+  const GAP = 8;
+
+  // Scroll to end when a new step is added
+  useEffect(() => {
+    if (scrollTrigger === 0 || !scrollRef.current) return;
+    scrollRef.current.scrollTo({ left: scrollRef.current.scrollWidth, behavior: "smooth" });
+  }, [scrollTrigger]);
+
+  // On initial load with existing steps: start at left, animate to end
+  useEffect(() => {
+    if (!scrollRef.current || steps.length === 0) return;
+    const el = scrollRef.current;
+    el.scrollLeft = 0;
+    const timeout = setTimeout(() => {
+      el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount only
 
   return (
     <div className="w-full bg-white border-b border-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      {/* Strip title */}
+      <div className="px-6 pt-3 pb-1 flex items-center gap-2">
+        <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
+          Initial journey strip
+        </span>
+      </div>
+
       {steps.length === 0 ? (
-        <div className="px-8 py-5 flex items-center gap-2 text-xs text-neutral-300">
+        <div className="px-6 pb-4 flex items-center gap-2 text-xs text-neutral-300">
           <div className="w-5 h-5 rounded border border-dashed border-neutral-200 flex items-center justify-center">
             <Plus className="w-3 h-3" />
           </div>
           Steps will appear here as you capture them
         </div>
       ) : (
-        <div className="overflow-x-auto scrollbar-none">
-          <div className="divide-y divide-neutral-100" style={{ minWidth: `${(steps.length + 1) * (CARD_W + 8) + 120}px` }}>
+        <div ref={scrollRef} className="overflow-x-auto scrollbar-none">
+          <div
+            className="divide-y divide-neutral-100"
+            style={{ minWidth: `${(steps.length + 1) * (CARD_W + GAP) + 160}px` }}
+          >
             {rows.map(({ actor, steps: gridCells }) => (
-              <div key={actor} className="flex items-start px-6 py-3 gap-3">
+              <div key={actor} className="flex items-start px-6 py-3 gap-0">
                 {/* Actor label */}
-                <div className="flex-shrink-0 w-28 pt-2">
+                <div className="flex-shrink-0 w-28 pt-2 pr-3">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3 h-3 text-neutral-300 flex-shrink-0" />
                     <span className="text-xs text-neutral-400 font-medium leading-snug" title={actor}>
@@ -133,59 +170,120 @@ function StoryboardStrip({
                   </div>
                 </div>
 
-                {/* Grid cells — one per global step position */}
-                <div className="flex items-center gap-2">
+                {/* Grid cells with insert zones between */}
+                <div className="flex items-center">
                   {gridCells.map((step, colIndex) => {
                     const globalNum = colIndex + 1;
 
-                    if (!step) {
-                      // Empty placeholder box
-                      return (
-                        <div
-                          key={`empty-${colIndex}`}
-                          style={{ width: CARD_W }}
-                          className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-150 bg-neutral-50/50"
-                        />
-                      );
-                    }
-
-                    const isActive = step.id === editingStepId;
                     return (
-                      <button
-                        key={step.id}
-                        type="button"
-                        onClick={() => onSelectStep(step)}
-                        style={{ width: CARD_W }}
-                        className={`flex-shrink-0 h-[80px] flex flex-col justify-between px-3 py-2.5 rounded-lg text-left transition-all duration-150 shadow-sm ${
-                          isActive
-                            ? "bg-primary-50 border border-primary-400"
-                            : "bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className={`text-[10px] font-semibold ${isActive ? "text-primary-500" : "text-neutral-400"}`}>
-                            {globalNum}
-                          </span>
-                          {step.location && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-neutral-300 truncate max-w-[90px]">
-                              <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
-                              <span className="truncate">{step.location}</span>
-                            </span>
-                          )}
+                      <div key={step ? step.id : `empty-${colIndex}`} className="flex items-center">
+                        {/* Insert-before zone */}
+                        <div
+                          className="group/insert flex-shrink-0 flex items-center justify-center w-3 h-[80px] cursor-pointer relative"
+                          onClick={() => onInsertBefore(colIndex, actor)}
+                          title="Insert step here"
+                        >
+                          <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-px bg-neutral-200 opacity-0 group-hover/insert:opacity-100 transition-opacity duration-150" />
+                          <div className="w-5 h-5 rounded-full bg-white border border-neutral-200 flex items-center justify-center shadow-sm opacity-0 group-hover/insert:opacity-100 transition-all duration-150 hover:border-primary-400 hover:bg-primary-50 z-10">
+                            <Plus className="w-3 h-3 text-neutral-400 group-hover/insert:text-primary-500" />
+                          </div>
                         </div>
-                        <p className={`text-[11px] font-medium leading-snug ${isActive ? "text-primary-700" : "text-neutral-700"}`}>
-                          {step.title}
-                        </p>
-                      </button>
+
+                        {/* Card or empty placeholder */}
+                        {!step ? (
+                          <div
+                            style={{ width: CARD_W }}
+                            className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-100 bg-neutral-50/30"
+                          />
+                        ) : (
+                          <div
+                            style={{ width: CARD_W }}
+                            className={`group/card flex-shrink-0 h-[80px] relative flex flex-col justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 shadow-sm ${
+                              step.id === editingStepId
+                                ? "bg-primary-50 border border-primary-400"
+                                : "bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md"
+                            }`}
+                            onClick={() => onSelectStep(step)}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={`text-[10px] font-semibold ${step.id === editingStepId ? "text-primary-500" : "text-neutral-400"}`}>
+                                {globalNum}
+                              </span>
+                              {step.location && (
+                                <span className="flex items-center gap-0.5 text-[9px] text-neutral-300 truncate max-w-[80px]">
+                                  <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                                  <span className="truncate">{step.location}</span>
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-[11px] font-medium leading-snug ${step.id === editingStepId ? "text-primary-700" : "text-neutral-700"}`}>
+                              {step.title}
+                            </p>
+
+                            {/* Hover actions */}
+                            <div className="absolute top-1.5 right-1.5 hidden group-hover/card:flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onSelectStep(step); }}
+                                className="w-5 h-5 rounded bg-white border border-neutral-200 flex items-center justify-center hover:border-primary-300 hover:bg-primary-50 transition-colors shadow-sm"
+                                title="Edit step"
+                              >
+                                <Pencil className="w-2.5 h-2.5 text-neutral-500" />
+                              </button>
+                              {deletingId === step.id ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onDeleteStep(step.id); setDeletingId(null); }}
+                                    className="w-5 h-5 rounded bg-red-500 border border-red-500 flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                                    title="Confirm delete"
+                                  >
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                                    className="w-5 h-5 rounded bg-white border border-neutral-200 flex items-center justify-center hover:border-neutral-300 transition-colors shadow-sm text-[9px] text-neutral-500"
+                                    title="Cancel"
+                                  >
+                                    ✕
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setDeletingId(step.id); }}
+                                  className="w-5 h-5 rounded bg-white border border-neutral-200 flex items-center justify-center hover:border-red-300 hover:bg-red-50 transition-colors shadow-sm"
+                                  title="Delete step"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5 text-neutral-500 hover:text-red-500" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
+
+                  {/* Trailing insert zone before the Add button */}
+                  <div
+                    className="group/insert flex-shrink-0 flex items-center justify-center w-3 h-[80px] cursor-pointer relative"
+                    onClick={() => onInsertBefore(gridCells.length, actor)}
+                    title="Insert step at end"
+                  >
+                    <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-px bg-neutral-200 opacity-0 group-hover/insert:opacity-100 transition-opacity duration-150" />
+                    <div className="w-5 h-5 rounded-full bg-white border border-neutral-200 flex items-center justify-center shadow-sm opacity-0 group-hover/insert:opacity-100 transition-all duration-150 hover:border-primary-400 hover:bg-primary-50 z-10">
+                      <Plus className="w-3 h-3 text-neutral-400 group-hover/insert:text-primary-500" />
+                    </div>
+                  </div>
 
                   {/* Add step for this actor */}
                   <button
                     type="button"
                     onClick={() => onAddStepForActor(actor)}
                     style={{ width: CARD_W }}
-                    className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-200 flex items-center justify-center text-neutral-300 hover:border-primary-300 hover:text-primary-500 hover:bg-primary-50 transition-all duration-150"
+                    className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-200 flex items-center justify-center text-neutral-300 hover:border-primary-300 hover:text-primary-500 hover:bg-primary-50 transition-all duration-150 ml-1"
                     title={`Add step for ${actor}`}
                   >
                     <Plus className="w-4 h-4" />
@@ -221,6 +319,8 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
   const [isSaving, setIsSaving] = useState(false);
   const [addActorInput, setAddActorInput] = useState("");
   const [showAddActor, setShowAddActor] = useState(false);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
 
   const [capture, setCapture] = useState<CaptureState>({
     actor: blueprint.primary_user?.trim() || "",
@@ -268,6 +368,46 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
     },
     []
   );
+
+  // ---- Insert-before handler ----
+  function handleInsertBefore(colIndex: number, actor: string) {
+    setInsertAtIndex(colIndex);
+    setCapture({
+      actor,
+      location: "",
+      description: "",
+      suggestedTitle: "",
+      title: "",
+      isSuggestingTitle: false,
+      editingStepId: null,
+    });
+    setAddActorInput("");
+    setShowAddActor(false);
+    setPhase("actor");
+    setPhaseVisible(true);
+    setIsCapturing(true);
+  }
+
+  // ---- Delete step handler ----
+  async function handleDeleteStep(stepId: string) {
+    const stepIndex = steps.findIndex((s) => s.id === stepId);
+    if (stepIndex === -1) return;
+
+    await supabase.from("steps").delete().eq("id", stepId);
+
+    // Re-order remaining steps
+    const remaining = steps.filter((s) => s.id !== stepId);
+    const updates = remaining.map((s, i) => ({ id: s.id, order_index: i }));
+    if (updates.length > 0) {
+      await Promise.all(
+        updates.map(({ id, order_index }) =>
+          supabase.from("steps").update({ order_index }).eq("id", id)
+        )
+      );
+    }
+
+    setSteps(remaining.map((s, i) => ({ ...s, order_index: i })));
+  }
 
   // ---- Start capturing a new step ----
   function startCapture(defaultActor?: string) {
@@ -410,8 +550,21 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
           )
         );
       } else {
-        // Insert
-        const newOrderIndex = steps.length;
+        // Insert — either at end or at specific position
+        const targetIndex = insertAtIndex !== null ? insertAtIndex : steps.length;
+
+        // Shift existing steps up to make room
+        if (insertAtIndex !== null && insertAtIndex < steps.length) {
+          const toShift = steps.filter((s) => s.order_index >= targetIndex);
+          await Promise.all(
+            toShift.map((s) =>
+              supabase
+                .from("steps")
+                .update({ order_index: s.order_index + 1 })
+                .eq("id", s.id)
+            )
+          );
+        }
 
         const { data, error } = await supabase
           .from("steps")
@@ -421,14 +574,29 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
             description: capture.description.trim() || null,
             actor: capture.actor.trim() || null,
             location: capture.location.trim() || null,
-            order_index: newOrderIndex,
+            order_index: targetIndex,
           })
           .select("*")
           .single();
 
         if (error || !data) throw error ?? new Error("Failed to save step");
 
-        setSteps((prev) => [...prev, data as Step]);
+        if (insertAtIndex !== null && insertAtIndex < steps.length) {
+          setSteps((prev) => {
+            const updated = prev.map((s) =>
+              s.order_index >= targetIndex
+                ? { ...s, order_index: s.order_index + 1 }
+                : s
+            );
+            updated.splice(targetIndex, 0, data as Step);
+            return updated;
+          });
+        } else {
+          setSteps((prev) => [...prev, data as Step]);
+        }
+
+        setInsertAtIndex(null);
+        setScrollTrigger((n) => n + 1);
       }
 
       if (goToOverview) {
@@ -517,8 +685,11 @@ export default function CaptureMode({ blueprint, initialSteps }: CaptureModeProp
           steps={steps}
           blueprint={blueprint}
           editingStepId={capture.editingStepId}
+          scrollTrigger={scrollTrigger}
           onSelectStep={startEdit}
           onAddStepForActor={(actor) => startCapture(actor)}
+          onInsertBefore={handleInsertBefore}
+          onDeleteStep={handleDeleteStep}
         />
       </div>
 
