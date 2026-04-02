@@ -922,43 +922,6 @@ export default function OverviewMode({
     setCellTitleEditing(false);
   }
 
-  async function saveCell() {
-    if (flyout?.type !== "cell") return;
-    setFlyoutSaving(true);
-
-    const { step, swimlane } = flyout;
-    const content = flyoutContent.trim();
-    const k = cellKey(step.id, swimlane.id);
-
-    const row = {
-      blueprint_id: blueprint.id,
-      step_id: step.id,
-      swimlane_id: swimlane.id,
-      content,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data } = await supabase
-      .from("cells")
-      .upsert(row, { onConflict: "step_id,swimlane_id" })
-      .select("*")
-      .single();
-
-    if (data) {
-      const newMap = new Map(cellMap);
-      newMap.set(k, data as Cell);
-      setCellMap(newMap);
-
-      // Remove from AI-seeded since user has explicitly saved
-      const newKeys = new Set(aiSeededKeys);
-      newKeys.delete(k);
-      setAiSeededKeys(newKeys);
-    }
-
-    setFlyoutSaving(false);
-    closeFlyout();
-  }
-
   // ---------------------------------------------------------------------------
   // Delete cell content
   // ---------------------------------------------------------------------------
