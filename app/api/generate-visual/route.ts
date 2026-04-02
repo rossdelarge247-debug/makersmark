@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      return NextResponse.json({ error: "Failed to store image" }, { status: 500 });
+      return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
     }
 
     const { data: urlData } = admin.storage.from("visuals").getPublicUrl(storagePath);
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
     if (dbError || !visual) {
       console.error("DB upsert error:", dbError);
-      return NextResponse.json({ error: "Failed to save visual record" }, { status: 500 });
+      return NextResponse.json({ error: `Database error: ${dbError?.message ?? "no data returned"}` }, { status: 500 });
     }
 
     // Update step.visual_id
@@ -83,7 +83,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ visual });
   } catch (err) {
-    console.error("generate-visual error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("generate-visual error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
