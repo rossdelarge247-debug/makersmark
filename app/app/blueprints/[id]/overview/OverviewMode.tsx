@@ -1177,7 +1177,7 @@ export default function OverviewMode({
                         ? "bg-neutral-50 hover:bg-neutral-100"
                         : "bg-white hover:bg-neutral-50"
                     }`}
-                    onMouseEnter={() => col.isServiceMoment && setHoveredColId(col.id)}
+                    onMouseEnter={() => setHoveredColId(col.id)}
                     onMouseLeave={() => setHoveredColId(null)}
                     onClick={() => openFlyout({ type: "step", step: primaryStep })}
                   >
@@ -1218,8 +1218,8 @@ export default function OverviewMode({
                       </span>
                     )}
 
-                    {/* Service moment column controls */}
-                    {col.isServiceMoment && (
+                    {/* Column controls — move left / delete / move right */}
+                    {(
                       <div
                         className="mt-2 pt-1.5 border-t border-neutral-200 flex items-center justify-between transition-opacity duration-150"
                         style={{ opacity: hoveredColId === col.id || deletingColId === col.id ? 1 : 0 }}
