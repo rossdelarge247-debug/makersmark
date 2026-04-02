@@ -6,6 +6,7 @@ export interface Blueprint {
   primary_user: string | null;
   user_goal: string | null;
   end_condition: string | null;
+  scenario: string | null;
   status: string;
   created_at: string;
   updated_at: string;

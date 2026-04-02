@@ -12,11 +12,11 @@ export type { Blueprint, Step, Swimlane, Cell };
 // ---------------------------------------------------------------------------
 
 const DEFAULT_SWIMLANES = [
+  "Physical / digital evidence",
   "User actions",
   "Frontstage actions",
   "Backstage actions",
   "Support processes / systems",
-  "Physical / digital evidence",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -161,6 +161,7 @@ export async function updateBlueprintMeta(
     primary_user?: string | null;
     user_goal?: string | null;
     end_condition?: string | null;
+    scenario?: string | null;
   }
 ): Promise<void> {
   const supabase = await createClient();

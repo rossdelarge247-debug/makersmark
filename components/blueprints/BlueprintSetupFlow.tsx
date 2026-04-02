@@ -9,7 +9,7 @@ interface BlueprintSetupFlowProps {
   blueprintId: string;
 }
 
-type Step = "primary_user" | "user_goal" | "end_condition";
+type Step = "primary_user" | "user_goal" | "scenario" | "end_condition";
 
 const STEPS: { key: Step; label: string; placeholder: string; hint: string }[] =
   [
@@ -26,9 +26,15 @@ const STEPS: { key: Step; label: string; placeholder: string; hint: string }[] =
       hint: "The outcome this person wants from the service.",
     },
     {
+      key: "scenario",
+      label: "Describe the scenario",
+      placeholder: "e.g. A customer who has just moved house tries to update their address online…",
+      hint: "Set the scene — the specific situation or context this journey takes place in.",
+    },
+    {
       key: "end_condition",
       label: "When does the journey end?",
-      placeholder: "e.g. Loan funds transferred, contract signed…",
+      placeholder: "e.g. Loan funds transferred, address confirmed in the system…",
       hint: "The moment the service interaction is complete.",
     },
   ];
@@ -41,6 +47,7 @@ export default function BlueprintSetupFlow({
   const [values, setValues] = useState<Record<Step, string>>({
     primary_user: "",
     user_goal: "",
+    scenario: "",
     end_condition: "",
   });
   const [isPending, setIsPending] = useState(false);
@@ -65,6 +72,7 @@ export default function BlueprintSetupFlow({
         .update({
           primary_user: values.primary_user || null,
           user_goal: values.user_goal || null,
+          scenario: values.scenario || null,
           end_condition: values.end_condition || null,
           updated_at: new Date().toISOString(),
         })

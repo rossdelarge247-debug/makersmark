@@ -19,6 +19,50 @@ import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step, Swimlane, Cell } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
+// Evidence icon inference
+// ---------------------------------------------------------------------------
+
+const EVIDENCE_PATTERNS: { pattern: RegExp; icon: string; label: string }[] = [
+  { pattern: /phone|call|mobile|voice|hotline/i,         icon: "📞", label: "Phone call" },
+  { pattern: /app|application|smartphone/i,              icon: "📱", label: "Mobile app" },
+  { pattern: /online|web|portal|website|browser|digital|internet/i, icon: "💻", label: "Digital screen" },
+  { pattern: /email|e-mail/i,                            icon: "✉️",  label: "Email" },
+  { pattern: /chat|message|sms|text/i,                   icon: "💬", label: "Chat / SMS" },
+  { pattern: /paper|form|document|letter|post|mail/i,    icon: "📄", label: "Paper / form" },
+  { pattern: /card|payment|atm|terminal/i,               icon: "💳", label: "Payment terminal" },
+  { pattern: /branch|office|counter|face|person|desk/i,  icon: "🏢", label: "In-person" },
+  { pattern: /kiosk|self.service/i,                      icon: "🖥️",  label: "Self-service kiosk" },
+  { pattern: /sign|poster|display|board/i,               icon: "🪧", label: "Signage / display" },
+];
+
+function inferEvidence(location: string | null | undefined): { icon: string; label: string } | null {
+  if (!location) return null;
+  for (const { pattern, icon, label } of EVIDENCE_PATTERNS) {
+    if (pattern.test(location)) return { icon, label };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Notation lines — which swimlane pairs get a divider, and what label
+// ---------------------------------------------------------------------------
+
+const NOTATION_LINES: Record<string, { label: string; sublabel: string }> = {
+  "User actions||Frontstage actions": {
+    label: "Line of interaction",
+    sublabel: "Customer-facing boundary",
+  },
+  "Frontstage actions||Backstage actions": {
+    label: "Line of visibility",
+    sublabel: "What the customer can / cannot see",
+  },
+};
+
+function notationKey(a: string, b: string) {
+  return `${a}||${b}`;
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -405,6 +449,18 @@ export default function OverviewMode({
       </nav>
 
       {/* ------------------------------------------------------------------ */}
+      {/* Scenario strip */}
+      {/* ------------------------------------------------------------------ */}
+      {blueprint.scenario && (
+        <div className="flex-shrink-0 flex items-center justify-center px-6 py-2 bg-neutral-50 border-b border-neutral-100">
+          <p className="text-xs text-neutral-400 italic text-center max-w-2xl leading-relaxed">
+            <span className="font-medium text-neutral-500 not-italic">Scenario: </span>
+            {blueprint.scenario}
+          </p>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
       {/* Seeding banner */}
       {/* ------------------------------------------------------------------ */}
       {isSeeding && (
@@ -487,8 +543,30 @@ export default function OverviewMode({
             </div>
 
             {/* Swimlane rows */}
-            {swimlanes.map((swimlane) => (
-              <div key={swimlane.id} className="flex border-b border-neutral-100 group/row">
+            {swimlanes.map((swimlane, swimIndex) => {
+              const prevSwimlane = swimlanes[swimIndex - 1];
+              const notation = prevSwimlane
+                ? NOTATION_LINES[notationKey(prevSwimlane.name, swimlane.name)]
+                : undefined;
+
+              return (
+              <div key={swimlane.id}>
+              {/* Notation divider */}
+              {notation && (
+                <div className="flex items-center px-4 py-0" style={{ minWidth: `${LABEL_W + steps.length * CELL_W + 48}px` }}>
+                  <div className="flex-1 border-t-2 border-dashed border-neutral-300" />
+                  <div className="flex-shrink-0 mx-3 flex flex-col items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">
+                      {notation.label}
+                    </span>
+                    <span className="text-[9px] text-neutral-300 whitespace-nowrap">
+                      {notation.sublabel}
+                    </span>
+                  </div>
+                  <div className="flex-1 border-t-2 border-dashed border-neutral-300" />
+                </div>
+              )}
+              <div className="flex border-b border-neutral-100 group/row">
                 {/* Swimlane label */}
                 <div
                   style={{ width: LABEL_W, minWidth: LABEL_W }}
@@ -531,6 +609,8 @@ export default function OverviewMode({
                   const k = cellKey(step.id, swimlane.id);
                   const cell = cellMap.get(k);
                   const isAiSeeded = aiSeededKeys.has(k);
+                  const isEvidenceRow = swimlane.name === "Physical / digital evidence";
+                  const evidenceHint = isEvidenceRow ? inferEvidence(step.location) : null;
 
                   return (
                     <div
@@ -543,6 +623,13 @@ export default function OverviewMode({
                           : "hover:bg-neutral-50"
                       }`}
                     >
+                      {/* Evidence icon badge */}
+                      {isEvidenceRow && evidenceHint && (
+                        <div className="flex items-center gap-1 mb-1.5">
+                          <span className="text-sm leading-none">{evidenceHint.icon}</span>
+                          <span className="text-[9px] text-neutral-400 font-medium">{evidenceHint.label}</span>
+                        </div>
+                      )}
                       {cell?.content ? (
                         <>
                           <p className="text-[11px] text-neutral-600 leading-relaxed">
@@ -565,7 +652,9 @@ export default function OverviewMode({
                   );
                 })}
               </div>
-            ))}
+              </div>
+            );
+            })}
 
             {/* Add swimlane row */}
             <div className="flex border-b border-neutral-100">
