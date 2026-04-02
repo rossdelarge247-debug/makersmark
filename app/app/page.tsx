@@ -1,10 +1,27 @@
-export default function DashboardPage() {
+import { createClient } from "@/lib/supabase/server";
+import { getUserBlueprints } from "@/lib/supabase/blueprint-actions";
+import DashboardClient from "./DashboardClient";
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const firstName = user?.user_metadata?.full_name
+    ? (user.user_metadata.full_name as string).split(" ")[0]
+    : user?.email?.split("@")[0] ?? "there";
+
+  const blueprints = await getUserBlueprints();
+
+  const hour = new Date().getHours();
+  const timeOfDay =
+    hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
-      <p className="mt-2 text-neutral-600">
-        Welcome to MakersMark. Your blueprints will appear here.
-      </p>
-    </div>
+    <DashboardClient
+      blueprints={blueprints}
+      greeting={`Good ${timeOfDay}, ${firstName}`}
+    />
   );
 }

@@ -162,6 +162,10 @@ export async function signInWithPassword(
 // Complete onboarding
 // ---------------------------------------------------------------------------
 
+/**
+ * Marks onboarding as complete and redirects to /app.
+ * Used as a form action from server or client components.
+ */
 export async function completeOnboarding(): Promise<void> {
   const supabase = await createClient();
 
@@ -179,6 +183,27 @@ export async function completeOnboarding(): Promise<void> {
     .eq("id", user.id);
 
   redirect("/app");
+}
+
+/**
+ * Marks onboarding as complete without redirecting.
+ * Used by the onboarding flow when a custom redirect destination is needed.
+ */
+export async function markOnboardingComplete(): Promise<void> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  await supabase
+    .from("profiles")
+    .update({ onboarding_completed: true })
+    .eq("id", user.id);
 }
 
 // ---------------------------------------------------------------------------
