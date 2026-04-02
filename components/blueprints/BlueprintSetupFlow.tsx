@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight } from "lucide-react";
-import { updateBlueprintMeta } from "@/lib/supabase/blueprint-actions";
+import { createClient } from "@/lib/supabase/client";
 
 interface BlueprintSetupFlowProps {
   blueprintId: string;
@@ -43,7 +43,7 @@ export default function BlueprintSetupFlow({
     user_goal: "",
     end_condition: "",
   });
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
   const current = STEPS[currentIndex];
   const isLast = currentIndex === STEPS.length - 1;
@@ -56,16 +56,23 @@ export default function BlueprintSetupFlow({
     }
   }
 
-  function handleComplete() {
-    startTransition(async () => {
-      await updateBlueprintMeta(blueprintId, {
-        primary_user: values.primary_user || null,
-        user_goal: values.user_goal || null,
-        end_condition: values.end_condition || null,
-      });
-      // Swimlanes are already seeded on creation, but this is a no-op if re-run
+  async function handleComplete() {
+    setIsPending(true);
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("blueprints")
+        .update({
+          primary_user: values.primary_user || null,
+          user_goal: values.user_goal || null,
+          end_condition: values.end_condition || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", blueprintId);
+    } finally {
+      setIsPending(false);
       router.push(`/app/blueprints/${blueprintId}/capture`);
-    });
+    }
   }
 
   function handleSkip() {

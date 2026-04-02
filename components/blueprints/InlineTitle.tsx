@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
-import { updateBlueprintMeta } from "@/lib/supabase/blueprint-actions";
+import { useState, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface InlineTitleProps {
   blueprintId: string;
@@ -15,26 +15,29 @@ export default function InlineTitle({
   const [title, setTitle] = useState(initialTitle);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(initialTitle);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleClick() {
     setDraft(title);
     setIsEditing(true);
-    // Focus handled by autoFocus on the input
   }
 
-  function commitSave() {
+  async function commitSave() {
     const trimmed = draft.trim();
     if (!trimmed || trimmed === title) {
       setIsEditing(false);
       return;
     }
-    startTransition(async () => {
-      await updateBlueprintMeta(blueprintId, { title: trimmed });
-      setTitle(trimmed);
-      setIsEditing(false);
-    });
+    setIsPending(true);
+    const supabase = createClient();
+    await supabase
+      .from("blueprints")
+      .update({ title: trimmed, updated_at: new Date().toISOString() })
+      .eq("id", blueprintId);
+    setTitle(trimmed);
+    setIsPending(false);
+    setIsEditing(false);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
