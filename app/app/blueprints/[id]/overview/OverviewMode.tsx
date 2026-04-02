@@ -475,10 +475,12 @@ export default function OverviewMode({
   type DragSource = { k: CellKey; step: Step; swimlane: Swimlane };
   const [dragging, setDragging] = useState<DragSource | null>(null);
   const [dragOver, setDragOver] = useState<CellKey | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [dragConfirm, setDragConfirm] = useState<{ from: DragSource; toStep: Step; toSwimlane: Swimlane } | null>(null);
   const [dragMoving, setDragMoving] = useState(false);
   const dragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragSourceRef = useRef<DragSource | null>(null);
+  const didDragRef = useRef(false);
 
   // Derived: count map keyed by target_id
   const noteCountMap = new Map<string, number>();
@@ -653,13 +655,43 @@ export default function OverviewMode({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closeFlyout]);
 
-  // Cancel drag if mouse released anywhere outside a cell
+  // Global mousemove — update ghost card position
   useEffect(() => {
-    function onGlobalMouseUp() { if (dragging) cancelDrag(); }
+    if (!dragging) return;
+    function onMove(e: MouseEvent) { setDragPos({ x: e.clientX, y: e.clientY }); }
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [dragging]);
+
+  // Global mouseup — finalise or cancel drag
+  useEffect(() => {
+    function onGlobalMouseUp() {
+      // Always clear the initiation timer (handles short clicks too)
+      if (dragTimerRef.current) { clearTimeout(dragTimerRef.current); dragTimerRef.current = null; }
+      if (!dragging) return; // timer hadn't fired yet = short click, let onClick handle normally
+
+      // We were in drag mode — block the upcoming onClick on any cell
+      const source = dragging;
+      const over = dragOver;
+      setDragging(null);
+      setDragOver(null);
+      setDragPos(null);
+      dragSourceRef.current = null;
+
+      if (over && over !== source.k) {
+        const [targetStepId, targetSwimlaneId] = over.split(":");
+        const toStep = steps.find((s) => s.id === targetStepId);
+        const toSwimlane = swimlanes.find((s) => s.id === targetSwimlaneId);
+        if (toStep && toSwimlane) setDragConfirm({ from: source, toStep, toSwimlane });
+      }
+
+      // Reset didDragRef after click events have fired
+      setTimeout(() => { didDragRef.current = false; }, 50);
+    }
     window.addEventListener("mouseup", onGlobalMouseUp);
     return () => window.removeEventListener("mouseup", onGlobalMouseUp);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragging]);
+  }, [dragging, dragOver, steps, swimlanes]);
 
   // ---------------------------------------------------------------------------
   // Save cell
@@ -857,32 +889,14 @@ export default function OverviewMode({
   // ---------------------------------------------------------------------------
 
   function handleCellMouseDown(e: React.MouseEvent, source: DragSource) {
-    if (e.button !== 0) return; // left button only
+    if (e.button !== 0) return;
     dragSourceRef.current = source;
+    const { clientX, clientY } = e;
     dragTimerRef.current = setTimeout(() => {
+      didDragRef.current = true;
       setDragging(source);
+      setDragPos({ x: clientX, y: clientY });
     }, 420);
-  }
-
-  function handleCellMouseUp(e: React.MouseEvent, source: DragSource) {
-    if (dragTimerRef.current) {
-      clearTimeout(dragTimerRef.current);
-      dragTimerRef.current = null;
-    }
-    if (!dragging) return; // was a short click — let onClick fire
-    e.preventDefault();
-    e.stopPropagation();
-    const overKey = dragOver;
-    cancelDrag();
-    if (overKey && overKey !== source.k) {
-      // Find the step/swimlane for the target key
-      const [targetStepId, targetSwimlaneId] = overKey.split(":");
-      const toStep = steps.find((s) => s.id === targetStepId);
-      const toSwimlane = swimlanes.find((s) => s.id === targetSwimlaneId);
-      if (toStep && toSwimlane) {
-        setDragConfirm({ from: source, toStep, toSwimlane });
-      }
-    }
   }
 
   function cancelDrag() {
@@ -890,6 +904,7 @@ export default function OverviewMode({
     dragSourceRef.current = null;
     setDragging(null);
     setDragOver(null);
+    setDragPos(null);
   }
 
   async function confirmMove() {
@@ -1381,20 +1396,19 @@ export default function OverviewMode({
                       <div
                         data-cell-key={k}
                         onMouseDown={(e) => handleCellMouseDown(e, { k, step, swimlane })}
-                        onMouseUp={(e) => handleCellMouseUp(e, { k, step, swimlane })}
                         onMouseEnter={() => { if (dragging && dragging.k !== k) setDragOver(k); }}
                         onMouseLeave={() => { if (dragOver === k) setDragOver(null); }}
-                        onClick={() => { if (!dragging) openFlyout({ type: "cell", step, swimlane }); }}
+                        onClick={() => { if (didDragRef.current) return; openFlyout({ type: "cell", step, swimlane }); }}
                         className={`relative rounded-xl border px-3 py-2.5 h-full transition-all duration-150 select-none ${
                           isDragSource
-                            ? "bg-white border-primary-400 shadow-2xl scale-105 rotate-1 z-30 opacity-90 ring-2 ring-primary-200"
+                            ? "bg-white/40 border-dashed border-neutral-300 opacity-40"
                             : isDragTarget
-                            ? "bg-primary-50 border-primary-400 border-dashed shadow-inner scale-95"
+                            ? "bg-white border-primary-400 border-dashed shadow-inner scale-[0.97]"
                             : isAnyDragging
-                            ? "bg-white border-dashed border-neutral-300 opacity-60"
+                            ? "bg-white border-dashed border-neutral-200 cursor-default"
                             : cell?.content
                             ? "bg-white border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 cursor-pointer"
-                            : "bg-white border-dashed border-neutral-200 hover:border-primary-300 hover:bg-primary-50/30 cursor-pointer"
+                            : "bg-transparent border-transparent cursor-pointer hover:bg-white/60 hover:border-dashed hover:border-neutral-200"
                         }`}
                       >
                         {isEvidenceRow && evidenceHint && (
@@ -1506,6 +1520,34 @@ export default function OverviewMode({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Ghost drag card — follows mouse */}
+      {/* ------------------------------------------------------------------ */}
+      {dragging && dragPos && (
+        <div
+          style={{
+            position: "fixed",
+            left: dragPos.x - CELL_W / 2,
+            top: dragPos.y - 32,
+            width: CELL_W,
+            zIndex: 9999,
+            pointerEvents: "none",
+          }}
+          className="rounded-xl border border-primary-400 bg-white shadow-2xl px-3 py-2.5 rotate-2 ring-2 ring-primary-100 opacity-95"
+        >
+          {cellMap.get(dragging.k)?.content ? (
+            <p className="text-[11px] text-neutral-600 leading-relaxed line-clamp-3">
+              {cellMap.get(dragging.k)!.content}
+            </p>
+          ) : (
+            <div className="flex items-center justify-center min-h-[40px]">
+              <span className="text-[10px] text-neutral-300 italic">Empty cell</span>
+            </div>
+          )}
+          <p className="text-[9px] text-neutral-300 mt-1.5 truncate">{dragging.swimlane.name}</p>
         </div>
       )}
 
