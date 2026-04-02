@@ -1784,7 +1784,9 @@ export default function OverviewMode({
                   const cell = cellMap.get(k);
                   const isAiSeeded = aiSeededKeys.has(k);
                   const isEvidenceRow = swimlane.name === "Physical / digital evidence";
-                  const evidenceHint = isEvidenceRow ? inferEvidence(step.location) : null;
+                  const evidenceHint = isEvidenceRow
+                    ? (inferEvidence(cell?.content) ?? inferEvidence(step.location))
+                    : null;
                   const cellNotes = cell ? notes.filter((n) => n.target_type === "cell" && n.target_id === cell.id) : [];
                   const showNoteCards = cellNotes.length > 0 && (notesVisible || cellNotesExpanded.has(k));
                   const catGroups = cellNotes.reduce<Partial<Record<NoteCategory, number>>>((acc, n) => {
@@ -1822,7 +1824,7 @@ export default function OverviewMode({
                             ? "bg-white border-dashed border-neutral-200 cursor-default"
                             : cell?.content
                             ? "bg-white border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 cursor-pointer"
-                            : isEvidenceRow
+                            : evidenceHint
                             ? "bg-white/70 border-neutral-100 cursor-pointer hover:bg-white hover:border-neutral-200"
                             : "bg-transparent border-transparent cursor-pointer hover:bg-white/60 hover:border-dashed hover:border-neutral-200"
                         }`}
