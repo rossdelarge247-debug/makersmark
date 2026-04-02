@@ -771,6 +771,20 @@ export default function OverviewMode({
         .slice(0, 5)
         .map((s) => ({ stepTitle: s.title }));
 
+      const col = columns.find((c) => c.steps.some((s) => s.id === next.step.id));
+      const columnContext =
+        targetType === "cell" && col
+          ? swimlanes.map((sl) => {
+              const slStep = stepForSwimlane(col, sl, primaryUser, actorRolesMap);
+              const slCell = cellMap.get(cellKey(slStep.id, sl.id));
+              return {
+                swimlaneName: sl.name,
+                content: slCell?.content ?? null,
+                isTarget: sl.id === (next.swimlane?.id ?? ""),
+              };
+            })
+          : [];
+
       fetch("/api/interrogate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -786,6 +800,7 @@ export default function OverviewMode({
             scenario: blueprint.scenario,
           },
           nearbyContext,
+          columnContext,
         }),
       })
         .then((r) => r.json())
@@ -2233,6 +2248,48 @@ export default function OverviewMode({
                     </button>
                   )}
                 </div>
+
+                {/* Service moment cross-section */}
+                {(() => {
+                  const col = columns.find((c) => c.steps.some((s) => s.id === flyout.step.id));
+                  if (!col) return null;
+                  const otherSwimlanes = swimlanes.filter((sl) => sl.id !== flyout.swimlane.id);
+                  if (!otherSwimlanes.length) return null;
+                  return (
+                    <div>
+                      <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-2">
+                        Rest of this service moment
+                      </p>
+                      <div className="rounded-xl border border-neutral-100 overflow-hidden">
+                        {otherSwimlanes.map((sl) => {
+                          const slStep = stepForSwimlane(col, sl, primaryUser, actorRolesMap);
+                          const slCell = cellMap.get(cellKey(slStep.id, sl.id));
+                          const hasContent = !!slCell?.content;
+                          return (
+                            <div
+                              key={sl.id}
+                              className="px-3 py-2.5 border-b border-neutral-100 last:border-b-0 bg-white"
+                            >
+                              <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">
+                                {sl.name}
+                              </p>
+                              {hasContent ? (
+                                <p className="text-[11px] text-neutral-600 leading-relaxed">
+                                  {slCell!.content}
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-neutral-300 italic flex items-center gap-1">
+                                  <span className="text-neutral-200 font-semibold">?</span>
+                                  Not yet captured
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Notes section */}
                 {(() => {
