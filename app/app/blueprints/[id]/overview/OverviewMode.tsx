@@ -434,6 +434,19 @@ export default function OverviewMode({
   const [cellNotesExpanded, setCellNotesExpanded] = useState<Set<string>>(new Set());
   const [stepNotesExpanded, setStepNotesExpanded] = useState<Set<string>>(new Set());
 
+  // ---- Service moment column management ----
+  const [deletingColId, setDeletingColId] = useState<string | null>(null);
+  const [colActionBusy, setColActionBusy] = useState(false);
+
+  // ---- Drag state ----
+  type DragSource = { k: CellKey; step: Step; swimlane: Swimlane };
+  const [dragging, setDragging] = useState<DragSource | null>(null);
+  const [dragOver, setDragOver] = useState<CellKey | null>(null);
+  const [dragConfirm, setDragConfirm] = useState<{ from: DragSource; toStep: Step; toSwimlane: Swimlane } | null>(null);
+  const [dragMoving, setDragMoving] = useState(false);
+  const dragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragSourceRef = useRef<DragSource | null>(null);
+
   // Derived: count map keyed by target_id
   const noteCountMap = new Map<string, number>();
   for (const n of notes) {
@@ -587,11 +600,20 @@ export default function OverviewMode({
   // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeFlyout();
+      if (e.key === "Escape") { closeFlyout(); cancelDrag(); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closeFlyout]);
+
+  // Cancel drag if mouse released anywhere outside a cell
+  useEffect(() => {
+    function onGlobalMouseUp() { if (dragging) cancelDrag(); }
+    window.addEventListener("mouseup", onGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", onGlobalMouseUp);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging]);
 
   // ---------------------------------------------------------------------------
   // Save cell
@@ -740,6 +762,122 @@ export default function OverviewMode({
     setNoteFormCategory(note.category);
     setNoteFormContent(note.content);
     setNoteAddMode(false);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Service moment column move / delete
+  // ---------------------------------------------------------------------------
+
+  async function moveColumn(colId: string, direction: "left" | "right") {
+    const idx = columns.findIndex((c) => c.id === colId);
+    if (idx === -1) return;
+    const swapIdx = direction === "left" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= columns.length) return;
+
+    setColActionBusy(true);
+    const colA = columns[idx];
+    const colB = columns[swapIdx];
+
+    // Collect all steps from both columns and reassign order_indexes
+    // Give colB steps the order_indexes of colA steps (and vice versa)
+    const aOrders = colA.steps.map((s) => s.order_index).sort((a, b) => a - b);
+    const bOrders = colB.steps.map((s) => s.order_index).sort((a, b) => a - b);
+
+    const doUpdate = (stepId: string, orderIndex: number) =>
+      new Promise<void>((resolve) => {
+        supabase.from("steps").update({ order_index: orderIndex }).eq("id", stepId).then(() => resolve());
+      });
+    const updates: Promise<void>[] = [
+      ...colA.steps.map((s, i) => doUpdate(s.id, bOrders[i] ?? bOrders[0])),
+      ...colB.steps.map((s, i) => doUpdate(s.id, aOrders[i] ?? aOrders[0])),
+    ];
+    await Promise.all(updates);
+    setColActionBusy(false);
+    // Reload page to re-derive columns
+    window.location.reload();
+  }
+
+  async function deleteColumn(col: ColumnDef) {
+    setColActionBusy(true);
+    const stepIds = col.steps.map((s) => s.id);
+    await supabase.from("steps").delete().in("id", stepIds);
+    setDeletingColId(null);
+    setColActionBusy(false);
+    window.location.reload();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drag handlers
+  // ---------------------------------------------------------------------------
+
+  function handleCellMouseDown(e: React.MouseEvent, source: DragSource) {
+    if (e.button !== 0) return; // left button only
+    dragSourceRef.current = source;
+    dragTimerRef.current = setTimeout(() => {
+      setDragging(source);
+    }, 420);
+  }
+
+  function handleCellMouseUp(e: React.MouseEvent, source: DragSource) {
+    if (dragTimerRef.current) {
+      clearTimeout(dragTimerRef.current);
+      dragTimerRef.current = null;
+    }
+    if (!dragging) return; // was a short click — let onClick fire
+    e.preventDefault();
+    e.stopPropagation();
+    const overKey = dragOver;
+    cancelDrag();
+    if (overKey && overKey !== source.k) {
+      // Find the step/swimlane for the target key
+      const [targetStepId, targetSwimlaneId] = overKey.split(":");
+      const toStep = steps.find((s) => s.id === targetStepId);
+      const toSwimlane = swimlanes.find((s) => s.id === targetSwimlaneId);
+      if (toStep && toSwimlane) {
+        setDragConfirm({ from: source, toStep, toSwimlane });
+      }
+    }
+  }
+
+  function cancelDrag() {
+    if (dragTimerRef.current) { clearTimeout(dragTimerRef.current); dragTimerRef.current = null; }
+    dragSourceRef.current = null;
+    setDragging(null);
+    setDragOver(null);
+  }
+
+  async function confirmMove() {
+    if (!dragConfirm) return;
+    setDragMoving(true);
+    const { from, toStep, toSwimlane } = dragConfirm;
+    const fromCell = cellMap.get(from.k);
+    const content = fromCell?.content ?? "";
+    const toKey = cellKey(toStep.id, toSwimlane.id);
+
+    // Upsert at destination
+    const { data: newCell } = await supabase
+      .from("cells")
+      .upsert(
+        { blueprint_id: blueprint.id, step_id: toStep.id, swimlane_id: toSwimlane.id, content, updated_at: new Date().toISOString() },
+        { onConflict: "step_id,swimlane_id" }
+      )
+      .select("*")
+      .single();
+
+    // Clear the source cell
+    await supabase
+      .from("cells")
+      .upsert(
+        { blueprint_id: blueprint.id, step_id: from.step.id, swimlane_id: from.swimlane.id, content: "", updated_at: new Date().toISOString() },
+        { onConflict: "step_id,swimlane_id" }
+      );
+
+    const newMap = new Map(cellMap);
+    if (newCell) newMap.set(toKey, newCell as Cell);
+    if (fromCell) newMap.set(from.k, { ...fromCell, content: "" });
+    setCellMap(newMap);
+    setDragMoving(false);
+    setDragConfirm(null);
   }
 
   // ---------------------------------------------------------------------------
@@ -957,6 +1095,58 @@ export default function OverviewMode({
                       </span>
                     )}
 
+                    {/* Service moment column controls */}
+                    {col.isServiceMoment && (
+                      <div className="mt-2 pt-1.5 border-t border-neutral-200 opacity-0 group-hover/steph:opacity-100 transition-opacity flex items-center justify-between">
+                        {/* Move left */}
+                        <button
+                          disabled={i === 0 || colActionBusy}
+                          onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "left"); }}
+                          className="inline-flex items-center gap-0.5 text-[10px] text-neutral-400 hover:text-neutral-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1 py-0.5 rounded hover:bg-neutral-100"
+                          title="Move left"
+                        >
+                          <ArrowLeft className="w-2.5 h-2.5" />
+                        </button>
+
+                        {/* Delete */}
+                        {deletingColId === col.id ? (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              disabled={colActionBusy}
+                              onClick={() => deleteColumn(col)}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                            >
+                              {colActionBusy ? "…" : "Delete"}
+                            </button>
+                            <button
+                              onClick={() => setDeletingColId(null)}
+                              className="text-[9px] text-neutral-400 hover:text-neutral-600 px-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingColId(col.id); }}
+                            className="text-[10px] text-neutral-300 hover:text-red-400 px-1 py-0.5 rounded hover:bg-red-50 transition-colors"
+                            title="Delete column"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        )}
+
+                        {/* Move right */}
+                        <button
+                          disabled={i === columns.length - 1 || colActionBusy}
+                          onClick={(e) => { e.stopPropagation(); moveColumn(col.id, "right"); }}
+                          className="inline-flex items-center gap-0.5 text-[10px] text-neutral-400 hover:text-neutral-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors px-1 py-0.5 rounded hover:bg-neutral-100"
+                          title="Move right"
+                        >
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Per-step chevron — appears on hover when notes exist */}
                     {stepNotes.length > 0 && (
                       <div
@@ -1073,97 +1263,120 @@ export default function OverviewMode({
                     <div
                       key={col.id}
                       style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
-                      onClick={() => openFlyout({ type: "cell", step, swimlane })}
-                      className={`flex-shrink-0 border-r border-neutral-100 px-3 py-2.5 cursor-pointer transition-colors group/cell relative ${
-                        col.isServiceMoment ? "bg-neutral-50/50" : ""
-                      } ${cell?.content ? "hover:bg-primary-50/40" : "hover:bg-neutral-50"}`}
+                      className={`flex-shrink-0 border-r border-neutral-100 p-1.5 cursor-pointer group/cell relative ${
+                        col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
+                      }`}
                     >
-                      {isEvidenceRow && evidenceHint && (
-                        <div className="flex items-center gap-1 mb-1.5">
-                          <span className="text-sm leading-none">{evidenceHint.icon}</span>
-                          <span className="text-[9px] text-neutral-400 font-medium">{evidenceHint.label}</span>
-                        </div>
-                      )}
-                      {cell?.content ? (
-                        <>
-                          <p className="text-[11px] text-neutral-600 leading-relaxed">{cell.content}</p>
-                          <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
-                            {noteCats.length > 0 && (
-                              <div
-                                className="flex items-center gap-1.5 cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
-                              >
-                                {noteCats.map(([cat, count]) => {
-                                  const cfg = NOTE_CATEGORIES[cat];
-                                  const Icon = cfg.icon;
-                                  return (
-                                    <span
-                                      key={cat}
-                                      title={cfg.label}
-                                      className={`inline-flex items-center gap-0.5 ${cfg.textCls}`}
-                                    >
-                                      <Icon className="w-2.5 h-2.5 flex-shrink-0" />
-                                      <span className="text-[9px] font-semibold leading-none">{count}</span>
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {isAiSeeded && (
-                              <span className="opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                                <Sparkles className="w-2.5 h-2.5 text-primary-300" />
-                              </span>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-center h-full min-h-[60px]">
-                          <div className="w-6 h-6 rounded-full border border-dashed border-neutral-200 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                            <Plus className="w-3 h-3 text-neutral-400" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Per-cell chevron — appears on hover when notes exist */}
-                      {cellNotes.length > 0 && (
-                        <div
-                          className="flex justify-center mt-1 opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCellNotesExpanded((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(k)) { next.delete(k); } else { next.add(k); }
-                              return next;
-                            });
-                          }}
-                        >
-                          <ChevronDown
-                            className={`w-3 h-3 text-neutral-300 hover:text-neutral-500 transition-transform duration-200 ${showNoteCards ? "rotate-180" : ""}`}
-                          />
-                        </div>
-                      )}
-
-                      {/* Inline note cards — slide down */}
+                      {/* Inner card */}
+                      {(() => {
+                        const isDragSource = dragging?.k === k;
+                        const isDragTarget = dragging && dragging.k !== k && dragOver === k;
+                        const isAnyDragging = !!dragging;
+                        return (
                       <div
-                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                          showNoteCards ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                        data-cell-key={k}
+                        onMouseDown={(e) => handleCellMouseDown(e, { k, step, swimlane })}
+                        onMouseUp={(e) => handleCellMouseUp(e, { k, step, swimlane })}
+                        onMouseEnter={() => { if (dragging && dragging.k !== k) setDragOver(k); }}
+                        onMouseLeave={() => { if (dragOver === k) setDragOver(null); }}
+                        onClick={() => { if (!dragging) openFlyout({ type: "cell", step, swimlane }); }}
+                        className={`relative rounded-xl border px-3 py-2.5 h-full transition-all duration-150 select-none ${
+                          isDragSource
+                            ? "bg-white border-primary-400 shadow-2xl scale-105 rotate-1 z-30 opacity-90 ring-2 ring-primary-200"
+                            : isDragTarget
+                            ? "bg-primary-50 border-primary-400 border-dashed shadow-inner scale-95"
+                            : isAnyDragging
+                            ? "bg-white border-dashed border-neutral-300 opacity-60"
+                            : cell?.content
+                            ? "bg-white border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 cursor-pointer"
+                            : "bg-white border-dashed border-neutral-200 hover:border-primary-300 hover:bg-primary-50/30 cursor-pointer"
                         }`}
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex flex-col gap-1.5 pb-1">
-                          {cellNotes.map((note) => {
-                            const cfg = NOTE_CATEGORIES[note.category];
-                            return (
-                              <div key={note.id} className={`rounded-lg border px-2 py-1.5 ${cfg.bgCls}`}>
-                                <p className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${cfg.textCls}`}>
-                                  {cfg.label}
-                                </p>
-                                <p className={`text-[10px] leading-snug ${cfg.textCls}`}>{note.content}</p>
-                              </div>
-                            );
-                          })}
+                        {isEvidenceRow && evidenceHint && (
+                          <div className="flex items-center gap-1 mb-1.5">
+                            <span className="text-sm leading-none">{evidenceHint.icon}</span>
+                            <span className="text-[9px] text-neutral-400 font-medium">{evidenceHint.label}</span>
+                          </div>
+                        )}
+                        {cell?.content ? (
+                          <>
+                            <p className="text-[11px] text-neutral-600 leading-relaxed pr-2 pb-4">{cell.content}</p>
+                            <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+                              {noteCats.length > 0 && (
+                                <div
+                                  className="flex items-center gap-1 cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); openFlyout({ type: "cell", step, swimlane }); }}
+                                >
+                                  {noteCats.map(([cat, count]) => {
+                                    const cfg = NOTE_CATEGORIES[cat];
+                                    const Icon = cfg.icon;
+                                    return (
+                                      <span key={cat} title={cfg.label} className={`inline-flex items-center gap-0.5 ${cfg.textCls}`}>
+                                        <Icon className="w-2.5 h-2.5 flex-shrink-0" />
+                                        <span className="text-[9px] font-semibold leading-none">{count}</span>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {isAiSeeded && (
+                                <span className="opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                                  <Sparkles className="w-2.5 h-2.5 text-primary-300" />
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center" style={{ minHeight: CELL_H - 24 }}>
+                            <div className="w-6 h-6 rounded-full border border-dashed border-neutral-200 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                              <Plus className="w-3 h-3 text-neutral-400" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Per-cell chevron — appears on hover when notes exist */}
+                        {cellNotes.length > 0 && (
+                          <div
+                            className="flex justify-center mt-1 opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCellNotesExpanded((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(k)) { next.delete(k); } else { next.add(k); }
+                                return next;
+                              });
+                            }}
+                          >
+                            <ChevronDown
+                              className={`w-3 h-3 text-neutral-300 hover:text-neutral-500 transition-transform duration-200 ${showNoteCards ? "rotate-180" : ""}`}
+                            />
+                          </div>
+                        )}
+
+                        {/* Inline note cards — slide down */}
+                        <div
+                          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                            showNoteCards ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex flex-col gap-1.5 pb-1">
+                            {cellNotes.map((note) => {
+                              const cfg = NOTE_CATEGORIES[note.category];
+                              return (
+                                <div key={note.id} className={`rounded-lg border px-2 py-1.5 ${cfg.bgCls}`}>
+                                  <p className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${cfg.textCls}`}>
+                                    {cfg.label}
+                                  </p>
+                                  <p className={`text-[10px] leading-snug ${cfg.textCls}`}>{note.content}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1186,6 +1399,41 @@ export default function OverviewMode({
                   Add swimlane
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Drag confirm modal */}
+      {/* ------------------------------------------------------------------ */}
+      {dragConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-base font-semibold text-neutral-900 mb-1">Move cell content?</h3>
+            <p className="text-sm text-neutral-500 mb-1">
+              From <span className="font-medium text-neutral-700">{dragConfirm.from.swimlane.name}</span>
+              {" → "}<span className="font-medium text-neutral-700">{dragConfirm.toSwimlane.name}</span>
+            </p>
+            <p className="text-xs text-neutral-400 mb-5">
+              The source cell will be cleared. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={confirmMove}
+                disabled={dragMoving}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+              >
+                {dragMoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Move
+              </button>
+              <button
+                onClick={() => setDragConfirm(null)}
+                disabled={dragMoving}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
