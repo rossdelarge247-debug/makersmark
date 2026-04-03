@@ -157,21 +157,7 @@ function StoryboardStrip({
         <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
           User Journey Mapping
         </span>
-        {steps.length > 0 && (
-          <button
-            type="button"
-            onClick={onToggleStoryboard}
-            className={`ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
-              storyboardExpanded
-                ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-            }`}
-          >
-            <Film className="w-3 h-3" />
-            Storyboard
-            <ChevronDown className={`w-3 h-3 transition-transform ${storyboardExpanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
+        {/* Storyboard toggle — hidden until StoryDiffusion integration is ready */}
       </div>
 
       {steps.length === 0 ? (
