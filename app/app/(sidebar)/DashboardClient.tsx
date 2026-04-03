@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowRight, FileText } from "lucide-react";
+import { Plus, Trash2, Zap, Grid3X3, FolderOpen } from "lucide-react";
 import { createBlueprint, deleteBlueprint } from "@/lib/supabase/blueprint-actions";
 import type { Blueprint } from "@/lib/supabase/blueprint-actions";
 
@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function BlueprintCard({
+function ProjectCard({
   blueprint,
   onDelete,
 }: {
@@ -57,13 +57,12 @@ function BlueprintCard({
     });
   }
 
-  function handleCancelDelete() {
-    setConfirmDelete(false);
-  }
-
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
-      <div className="flex-1 p-5">
+      <div
+        className="flex-1 p-5 cursor-pointer"
+        onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}
+      >
         <div className="flex items-start justify-between gap-3 mb-3">
           <h3 className="text-base font-semibold text-neutral-900 leading-snug line-clamp-2">
             {blueprint.title}
@@ -76,45 +75,55 @@ function BlueprintCard({
           </p>
         )}
         <p className="text-xs text-neutral-400">
-          Created {formatDate(blueprint.created_at)}
+          {formatDate(blueprint.created_at)}
         </p>
       </div>
 
-      <div className="px-5 py-4 border-t border-neutral-100 flex items-center justify-between gap-3">
+      {/* Two entry buttons */}
+      <div className="px-5 py-3 border-t border-neutral-100 flex items-center gap-2">
         <button
-          onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+          onClick={() => router.push(`/app/blueprints/${blueprint.id}/capture`)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
         >
-          Open
-          <ArrowRight className="w-3.5 h-3.5" />
+          <Zap className="w-3.5 h-3.5" />
+          User Journey
+        </button>
+        <button
+          onClick={() => router.push(`/app/blueprints/${blueprint.id}/overview`)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+        >
+          <Grid3X3 className="w-3.5 h-3.5" />
+          Blueprint
         </button>
 
-        {confirmDelete ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-500">Are you sure?</span>
+        {/* Delete */}
+        <div className="flex items-center">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? "Deleting…" : "Delete?"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                No
+              </button>
+            </div>
+          ) : (
             <button
               onClick={handleDelete}
-              disabled={isDeleting}
-              className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
+              className="p-1.5 rounded-lg text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+              aria-label="Delete project"
             >
-              {isDeleting ? "Deleting…" : "Yes, delete"}
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={handleCancelDelete}
-              className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleDelete}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-            aria-label="Delete blueprint"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -124,21 +133,20 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-50 mb-6">
-        <FileText className="w-8 h-8 text-primary-400" />
+        <FolderOpen className="w-8 h-8 text-primary-400" />
       </div>
       <h3 className="text-lg font-semibold text-neutral-900 mb-2">
-        No blueprints yet
+        No projects yet
       </h3>
       <p className="text-sm text-neutral-500 mb-8 max-w-xs leading-relaxed">
-        Create your first service blueprint to start mapping your customer
-        experience.
+        Create your first project to start mapping service experiences.
       </p>
       <button
         onClick={onCreate}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
       >
         <Plus className="w-4 h-4" />
-        Create your first blueprint
+        Create your first project
       </button>
     </div>
   );
@@ -154,7 +162,7 @@ export default function DashboardClient({
 
   function handleCreate() {
     startCreateTransition(async () => {
-      const id = await createBlueprint({ title: "Untitled blueprint" });
+      const id = await createBlueprint({ title: "Untitled project" });
       router.push(`/app/blueprints/${id}`);
     });
   }
@@ -171,8 +179,8 @@ export default function DashboardClient({
           <h1 className="text-3xl font-bold text-neutral-900">{greeting}</h1>
           <p className="mt-1.5 text-neutral-500 text-base">
             {blueprints.length === 0
-              ? "Get started by creating your first blueprint."
-              : `You have ${blueprints.length} blueprint${blueprints.length === 1 ? "" : "s"}.`}
+              ? "Get started by creating your first project."
+              : `You have ${blueprints.length} project${blueprints.length === 1 ? "" : "s"}.`}
           </p>
         </div>
         <button
@@ -188,19 +196,19 @@ export default function DashboardClient({
           ) : (
             <>
               <Plus className="w-4 h-4" />
-              New blueprint
+              New project
             </>
           )}
         </button>
       </div>
 
-      {/* Blueprint grid or empty state */}
+      {/* Project grid or empty state */}
       {blueprints.length === 0 ? (
         <EmptyState onCreate={handleCreate} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {blueprints.map((blueprint) => (
-            <BlueprintCard
+            <ProjectCard
               key={blueprint.id}
               blueprint={blueprint}
               onDelete={handleDelete}

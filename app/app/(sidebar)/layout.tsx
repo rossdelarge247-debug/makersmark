@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
           >
             <Map className="w-4 h-4 text-neutral-500" />
-            Blueprints
+            Projects
           </a>
           <a
             href="/app/settings"

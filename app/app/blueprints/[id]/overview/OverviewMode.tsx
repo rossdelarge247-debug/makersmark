@@ -1549,11 +1549,11 @@ export default function OverviewMode({
       {/* ------------------------------------------------------------------ */}
       <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 bg-white border-b border-neutral-100 z-10">
         <Link
-          href="/app"
+          href={`/app/blueprints/${blueprint.id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors min-w-[120px]"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          MakersMark
+          {blueprint.title}
         </Link>
 
         {/* Blueprint title — centred, inline editable */}
@@ -1636,7 +1636,7 @@ export default function OverviewMode({
             href={`/app/blueprints/${blueprint.id}/capture`}
             className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
           >
-            Capture mode
+            User Journey
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

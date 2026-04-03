@@ -960,17 +960,17 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
       {/* ------------------------------------------------------------------ */}
       <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-100">
         <Link
-          href="/app"
+          href={`/app/blueprints/${blueprint.id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          MakersMark
+          {blueprint.title}
         </Link>
         <Link
           href={`/app/blueprints/${blueprint.id}/overview`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
         >
-          View overview
+          Blueprint view
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </nav>
