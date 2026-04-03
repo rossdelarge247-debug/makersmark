@@ -1738,22 +1738,45 @@ export default function OverviewMode({
       {/* Empty state */}
       {/* ------------------------------------------------------------------ */}
       {steps.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-sm">
-            <div className="inline-flex w-12 h-12 rounded-2xl bg-neutral-100 items-center justify-center mb-5">
-              <Plus className="w-5 h-5 text-neutral-400" />
+        <div className="flex-1 overflow-auto">
+          <div
+            style={{ minWidth: `${LABEL_W + 148 + 48}px` }}
+            className="pb-10"
+          >
+            {/* Column header row */}
+            <div className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-100" />
+              <div
+                style={{ width: 148, minWidth: 148 }}
+                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-100 bg-white"
+              >
+                <button
+                  onClick={() => openFlyout({ type: "add-step" })}
+                  className="inline-flex flex-col items-center gap-1.5 w-full px-3 py-3 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-300 hover:border-primary-300 hover:text-primary-500 hover:bg-primary-50 transition-colors group/addstep"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Add step</span>
+                </button>
+              </div>
             </div>
-            <h2 className="text-lg font-semibold text-neutral-900 mb-2">No steps yet</h2>
-            <p className="text-sm text-neutral-400 mb-6">
-              Capture some journey steps first — the blueprint will populate automatically.
-            </p>
-            <Link
-              href={`/app/blueprints/${blueprint.id}/capture`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors"
-            >
-              Go to capture
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+
+            {/* Swimlane rows — labels only, no cells yet */}
+            {swimlanes.map((swimlane) => (
+              <div key={swimlane.id} className="flex border-b border-neutral-100">
+                <div
+                  style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H }}
+                  className="flex-shrink-0 flex items-start px-4 py-3 border-r border-neutral-100 bg-white sticky left-0 z-[5]"
+                >
+                  <span className="text-xs font-medium text-neutral-500 leading-snug pt-0.5">
+                    {swimlane.name}
+                  </span>
+                </div>
+                <div
+                  style={{ width: 148, minWidth: 148, height: CELL_H }}
+                  className="flex-shrink-0 border-r border-neutral-100 bg-neutral-50/30"
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}
