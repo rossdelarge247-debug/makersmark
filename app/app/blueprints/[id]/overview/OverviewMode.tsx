@@ -1103,6 +1103,16 @@ export default function OverviewMode({
     setVisualGenerating(true);
     setVisualError(null);
     try {
+      // Build scene context from the column so the prompt is specific
+      const col = columns.find((c) => c.steps.some((s) => s.id === step.id));
+      const getCellContent = (swimlaneName: string): string | null => {
+        if (!col) return null;
+        const sl = swimlanes.find((s) => s.name.toLowerCase().includes(swimlaneName.toLowerCase()));
+        if (!sl) return null;
+        const slStep = stepForSwimlane(col, sl, primaryUser, actorRolesMap);
+        return cellMap.get(cellKey(slStep.id, sl.id))?.content ?? null;
+      };
+
       const res = await fetch("/api/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1112,6 +1122,10 @@ export default function OverviewMode({
           stepDescription: step.description,
           blueprintId: blueprint.id,
           modification,
+          scenario: blueprint.scenario ?? null,
+          actorName: step.actor || blueprint.primary_user || null,
+          userAction: getCellContent("user action"),
+          frontstageAction: getCellContent("frontstage"),
         }),
       });
       const data = await res.json();

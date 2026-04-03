@@ -4,29 +4,79 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 // Fixed Beano/Viz comic style — locked for MVP, expandable in later releases
 const COMIC_STYLE =
-  "Single comic strip panel in the style of classic British comics like The Beano and Dandy. " +
-  "Bold black ink outlines, flat bright primary colours, expressive cartoonish characters, " +
-  "simple clean panel composition, light or white background, no text, no speech bubbles, " +
-  "no captions. Humorous light-hearted storytelling illustration style.";
+  "Single panel in a comic strip storyboard, drawn in the style of classic British comics " +
+  "like The Beano and The Dandy. Bold black ink outlines, flat bright primary colours, " +
+  "expressive cartoonish characters with exaggerated reactions, simple clean panel composition, " +
+  "light or white background. No text, no speech bubbles, no captions, no panel borders. " +
+  "Humorous light-hearted storytelling style.";
 
-function buildPrompt(stepTitle: string, stepDescription: string | null, modification: string | null): string {
-  const scene = stepDescription?.trim()
-    ? `${stepTitle}: ${stepDescription}`
-    : stepTitle;
-  const base = `${COMIC_STYLE} Scene: ${scene}.`;
-  return modification?.trim() ? `${base} Additional instruction: ${modification.trim()}.` : base;
+interface SceneContext {
+  stepTitle: string;
+  stepDescription: string | null;
+  scenario: string | null;
+  actorName: string | null;
+  userAction: string | null;
+  frontstageAction: string | null;
+  modification: string | null;
+}
+
+function buildPrompt(ctx: SceneContext): string {
+  const lines: string[] = [COMIC_STYLE, ""];
+
+  lines.push("SCENE BRIEF FOR THIS STORYBOARD PANEL:");
+
+  if (ctx.scenario) {
+    lines.push(`Service scenario: ${ctx.scenario}.`);
+  }
+
+  lines.push(`Journey step: "${ctx.stepTitle}".`);
+
+  if (ctx.stepDescription) {
+    lines.push(`Step description: ${ctx.stepDescription}.`);
+  }
+
+  if (ctx.actorName) {
+    lines.push(`Actor(s) in this scene: ${ctx.actorName}.`);
+  }
+
+  if (ctx.userAction) {
+    lines.push(`What the user is doing: ${ctx.userAction}.`);
+  }
+
+  if (ctx.frontstageAction) {
+    lines.push(`Visible service interaction: ${ctx.frontstageAction}.`);
+  }
+
+  lines.push("");
+  lines.push(
+    "Depict this exact moment as a single expressive comic panel. " +
+    "Focus on the human action and emotion of the scene. " +
+    "Show the people involved and what is physically happening."
+  );
+
+  if (ctx.modification?.trim()) {
+    lines.push(`Additional direction: ${ctx.modification.trim()}.`);
+  }
+
+  return lines.join(" ");
 }
 
 export async function POST(req: Request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
-    const { stepId, stepTitle, stepDescription, blueprintId, modification } = await req.json();
+    const {
+      stepId, stepTitle, stepDescription, blueprintId, modification,
+      scenario, actorName, userAction, frontstageAction,
+    } = await req.json();
 
     if (!stepId || !stepTitle || !blueprintId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const prompt = buildPrompt(stepTitle, stepDescription, modification);
+    const prompt = buildPrompt({
+      stepTitle, stepDescription, scenario, actorName,
+      userAction, frontstageAction, modification,
+    });
 
     // Generate image via DALL-E 3 — request base64 so we own the bytes
     const response = await openai.images.generate({
