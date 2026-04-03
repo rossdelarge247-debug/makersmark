@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Film, Loader2, Sparkles, RefreshCw, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step, Visual } from "@/lib/types/blueprint";
 
@@ -103,7 +103,6 @@ interface StoryboardStripProps {
   onAddStepForActor: (actor: string) => void;
   onInsertBefore: (colIndex: number, actor: string) => void;
   onDeleteStep: (stepId: string) => void;
-  onToggleStoryboard: () => void;
   onGenerateAll: () => void;
   onRegenerateVisual: (step: Step) => void;
 }
@@ -120,7 +119,6 @@ function StoryboardStrip({
   onAddStepForActor,
   onInsertBefore,
   onDeleteStep,
-  onToggleStoryboard,
   onGenerateAll,
   onRegenerateVisual,
 }: StoryboardStripProps) {
@@ -991,7 +989,6 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
           onAddStepForActor={(actor) => startCapture(actor)}
           onInsertBefore={handleInsertBefore}
           onDeleteStep={handleDeleteStep}
-          onToggleStoryboard={() => setStoryboardExpanded((v) => !v)}
           onGenerateAll={handleGenerateAllVisuals}
           onRegenerateVisual={handleRegenerateVisual}
         />
