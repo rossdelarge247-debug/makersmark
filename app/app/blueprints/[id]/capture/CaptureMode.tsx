@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Film, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Film, Loader2, Sparkles, RefreshCw, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Blueprint, Step, Visual } from "@/lib/types/blueprint";
 
@@ -97,12 +97,15 @@ interface StoryboardStripProps {
   editingStepId: string | null;
   scrollTrigger: number;
   visualMap: Map<string, Visual>;
-  generatingVisualId: string | null;
+  generatingVisualIds: Set<string>;
+  storyboardExpanded: boolean;
   onSelectStep: (step: Step) => void;
   onAddStepForActor: (actor: string) => void;
   onInsertBefore: (colIndex: number, actor: string) => void;
   onDeleteStep: (stepId: string) => void;
-  onGenerateVisual: (step: Step) => void;
+  onToggleStoryboard: () => void;
+  onGenerateAll: () => void;
+  onRegenerateVisual: (step: Step) => void;
 }
 
 function StoryboardStrip({
@@ -111,12 +114,15 @@ function StoryboardStrip({
   editingStepId,
   scrollTrigger,
   visualMap,
-  generatingVisualId,
+  generatingVisualIds,
+  storyboardExpanded,
   onSelectStep,
   onAddStepForActor,
   onInsertBefore,
   onDeleteStep,
-  onGenerateVisual,
+  onToggleStoryboard,
+  onGenerateAll,
+  onRegenerateVisual,
 }: StoryboardStripProps) {
   const primary = blueprint.primary_user?.trim() || "Primary user";
   const rows = groupStepsByActor(steps, primary);
@@ -149,8 +155,23 @@ function StoryboardStrip({
       {/* Strip title */}
       <div className="px-6 pt-3 pb-1 flex items-center gap-2">
         <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
-          Initial journey strip
+          User Journey Mapping
         </span>
+        {steps.length > 0 && (
+          <button
+            type="button"
+            onClick={onToggleStoryboard}
+            className={`ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
+              storyboardExpanded
+                ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+            }`}
+          >
+            <Film className="w-3 h-3" />
+            Storyboard
+            <ChevronDown className={`w-3 h-3 transition-transform ${storyboardExpanded ? "rotate-180" : ""}`} />
+          </button>
+        )}
       </div>
 
       {steps.length === 0 ? (
@@ -228,34 +249,25 @@ function StoryboardStrip({
                               {step.title}
                             </p>
 
-                            {/* Visual thumbnail or generate indicator */}
+                            {/* Visual thumbnail or generating indicator */}
                             {(() => {
                               const visual = visualMap.get(step.id);
-                              const isGenerating = generatingVisualId === step.id;
+                              const isGenerating = generatingVisualIds.has(step.id);
                               if (isGenerating) {
                                 return (
-                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md bg-violet-100 flex items-center justify-center">
-                                    <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md bg-amber-100 flex items-center justify-center">
+                                    <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
                                   </div>
                                 );
                               }
                               if (visual) {
                                 return (
-                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md overflow-hidden border border-violet-200 shadow-sm">
+                                  <div className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md overflow-hidden border border-amber-200 shadow-sm">
                                     <Image src={visual.url} alt="" fill className="object-cover" sizes="28px" />
                                   </div>
                                 );
                               }
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); onGenerateVisual(step); }}
-                                  className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md border border-dashed border-neutral-200 bg-white hidden group-hover/card:flex items-center justify-center hover:border-violet-300 hover:bg-violet-50 transition-colors"
-                                  title="Generate storyboard panel"
-                                >
-                                  <Film className="w-3 h-3 text-neutral-300 hover:text-violet-400" />
-                                </button>
-                              );
+                              return null;
                             })()}
 
                             {/* Hover actions */}
@@ -329,6 +341,91 @@ function StoryboardStrip({
                 </div>
               </div>
             ))}
+
+            {/* ---------------------------------------------------------------- */}
+            {/* Storyboard panel row                                              */}
+            {/* ---------------------------------------------------------------- */}
+            {storyboardExpanded && (
+              <div className="border-t border-amber-100 bg-amber-50/40">
+                <div className="flex items-start px-6 py-3">
+                  {/* Spacer matching actor label width */}
+                  <div className="flex-shrink-0 w-28 pr-3 pt-1">
+                    <span className="text-[9px] font-semibold text-amber-500 uppercase tracking-widest">Panels</span>
+                  </div>
+
+                  {/* Panel cells — relative container for floating CTA */}
+                  <div className="relative flex items-center">
+                    {steps.map((step) => {
+                      const visual = visualMap.get(step.id);
+                      const isGenerating = generatingVisualIds.has(step.id);
+                      return (
+                        <div key={step.id} className="flex items-start flex-shrink-0">
+                          {/* Insert zone spacer (matches journey row) */}
+                          <div className="w-3 flex-shrink-0" />
+                          {/* Panel cell */}
+                          <div
+                            style={{ width: CARD_W }}
+                            className="flex-shrink-0 h-[120px] rounded-lg overflow-hidden border relative group/panel"
+                          >
+                            {isGenerating ? (
+                              <div className="absolute inset-0 bg-amber-100 flex flex-col items-center justify-center gap-2 rounded-lg">
+                                <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                                <span className="text-[9px] text-amber-600 font-medium">Generating…</span>
+                              </div>
+                            ) : visual ? (
+                              <>
+                                <Image src={visual.url} alt={step.title} fill className="object-cover" sizes="160px" />
+                                <button
+                                  type="button"
+                                  onClick={() => onRegenerateVisual(step)}
+                                  className="absolute inset-0 bg-black/0 group-hover/panel:bg-black/40 transition-colors flex flex-col items-center justify-center gap-1 rounded-lg"
+                                  title="Regenerate panel"
+                                >
+                                  <RefreshCw className="w-4 h-4 text-white opacity-0 group-hover/panel:opacity-100 transition-opacity" />
+                                  <span className="text-[9px] text-white opacity-0 group-hover/panel:opacity-100 transition-opacity font-medium">Regen</span>
+                                </button>
+                              </>
+                            ) : (
+                              <div className="absolute inset-0 rounded-lg border border-dashed border-amber-200 bg-amber-50/60" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Trailing spacer + add-button spacer (mirrors journey row) */}
+                    <div className="w-3 flex-shrink-0" />
+                    <div style={{ width: CARD_W }} className="flex-shrink-0" />
+
+                    {/* Floating "Generate storyboard" CTA when no visuals and not generating */}
+                    {visualMap.size === 0 && generatingVisualIds.size === 0 && steps.length > 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <div className="flex flex-col items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={onGenerateAll}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors shadow-lg"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            Generate storyboard
+                          </button>
+                          <span className="text-[10px] text-amber-600/70">This may take a minute per panel</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Progress message when generating */}
+                    {generatingVisualIds.size > 0 && (
+                      <div className="absolute inset-0 pointer-events-none flex items-end justify-center pb-2 z-10">
+                        <span className="text-[9px] text-amber-600 bg-amber-100 px-2 py-1 rounded-full font-medium">
+                          {generatingVisualIds.size} panel{generatingVisualIds.size !== 1 ? "s" : ""} generating…
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -357,7 +454,8 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
     for (const v of initialVisuals) m.set(v.step_id, v);
     return m;
   });
-  const [generatingVisualId, setGeneratingVisualId] = useState<string | null>(null);
+  const [generatingVisualIds, setGeneratingVisualIds] = useState<Set<string>>(new Set());
+  const [storyboardExpanded, setStoryboardExpanded] = useState(() => initialVisuals.length > 0);
   const [phase, setPhase] = useState<CapturePhase>("actor");
   const [isCapturing, setIsCapturing] = useState(false);
   const [phaseVisible, setPhaseVisible] = useState(true);
@@ -420,10 +518,26 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
     )
   );
 
-  // Generate visual for a step (one-click, no modification prompt in capture mode)
-  async function handleGenerateVisual(step: Step) {
-    if (generatingVisualId) return;
-    setGeneratingVisualId(step.id);
+  // Fire all panels in parallel — the batch "Generate storyboard" action
+  async function handleGenerateAllVisuals() {
+    if (steps.length === 0) return;
+    setStoryboardExpanded(true);
+    // Mark every step as generating
+    setGeneratingVisualIds(new Set(steps.map((s) => s.id)));
+    await Promise.allSettled(
+      steps.map((step) => generateOneVisual(step))
+    );
+  }
+
+  // Regen a single panel after the batch is done
+  async function handleRegenerateVisual(step: Step) {
+    if (generatingVisualIds.has(step.id)) return;
+    setGeneratingVisualIds((prev) => { const s = new Set(prev); s.add(step.id); return s; });
+    await generateOneVisual(step);
+  }
+
+  // Shared internal: call API and update visualMap, then clear generating flag
+  async function generateOneVisual(step: Step) {
     try {
       const res = await fetch("/api/generate-visual", {
         method: "POST",
@@ -433,6 +547,8 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
           stepTitle: step.title,
           stepDescription: step.description,
           blueprintId: blueprint.id,
+          scenario: blueprint.scenario,
+          actorName: step.actor,
           modification: null,
         }),
       });
@@ -445,9 +561,13 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
         });
       }
     } catch (err) {
-      console.error("generateVisual error:", err);
+      console.error("generateVisual error for step", step.id, err);
     } finally {
-      setGeneratingVisualId(null);
+      setGeneratingVisualIds((prev) => {
+        const s = new Set(prev);
+        s.delete(step.id);
+        return s;
+      });
     }
   }
 
@@ -879,12 +999,15 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
           editingStepId={capture.editingStepId}
           scrollTrigger={scrollTrigger}
           visualMap={visualMap}
-          generatingVisualId={generatingVisualId}
+          generatingVisualIds={generatingVisualIds}
+          storyboardExpanded={storyboardExpanded}
           onSelectStep={startEdit}
           onAddStepForActor={(actor) => startCapture(actor)}
           onInsertBefore={handleInsertBefore}
           onDeleteStep={handleDeleteStep}
-          onGenerateVisual={handleGenerateVisual}
+          onToggleStoryboard={() => setStoryboardExpanded((v) => !v)}
+          onGenerateAll={handleGenerateAllVisuals}
+          onRegenerateVisual={handleRegenerateVisual}
         />
       </div>
 

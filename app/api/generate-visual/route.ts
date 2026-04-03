@@ -2,12 +2,14 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Simple anime / manga style — black and white line art
+// Government public-information / 70s educational comic style
 const COMIC_STYLE =
-  "Single panel storyboard illustration in a clean simple anime / manga style. " +
-  "Black and white only, bold clean ink outlines, no colour, no shading, minimal detail. " +
-  "Flat white backgrounds. Expressive cartoon faces and clear body language. " +
-  "Simple clear composition — one moment, one action. " +
+  "Single panel public information illustration in a 1970s British government health campaign style. " +
+  "Flat bold colours — mustard yellow, NHS blue, brick red, forest green, cream white. " +
+  "Strong black outlines, screen-print poster texture, slightly rough edges. " +
+  "Simple sturdy figure illustrations reminiscent of public health leaflets, road safety posters, " +
+  "and HMSO publications. Clean instructional composition — one clear moment, one clear action. " +
+  "Earnest and direct visual tone, like a Viz educational parody or an NHS advice leaflet. " +
   "No text, no speech bubbles, no captions, no panel borders.";
 
 interface SceneContext {
