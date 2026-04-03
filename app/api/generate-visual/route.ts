@@ -2,13 +2,13 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Fixed Beano/Viz comic style — locked for MVP, expandable in later releases
+// Simple anime / manga style — black and white line art
 const COMIC_STYLE =
-  "Single panel in a comic strip storyboard, drawn in the style of classic British comics " +
-  "like The Beano and The Dandy. Bold black ink outlines, flat bright primary colours, " +
-  "expressive cartoonish characters with exaggerated reactions, simple clean panel composition, " +
-  "light or white background. No text, no speech bubbles, no captions, no panel borders. " +
-  "Humorous light-hearted storytelling style.";
+  "Single panel storyboard illustration in a clean simple anime / manga style. " +
+  "Black and white only, bold clean ink outlines, no colour, no shading, minimal detail. " +
+  "Flat white backgrounds. Expressive cartoon faces and clear body language. " +
+  "Simple clear composition — one moment, one action. " +
+  "No text, no speech bubbles, no captions, no panel borders.";
 
 interface SceneContext {
   stepTitle: string;
@@ -96,7 +96,8 @@ export async function POST(req: Request) {
     // Upload to Supabase Storage
     const admin = createAdminClient();
     const imageBuffer = Buffer.from(b64, "base64");
-    const storagePath = `${blueprintId}/${stepId}.png`;
+    // Include timestamp so each generation gets a unique URL — prevents browser caching stale images
+    const storagePath = `${blueprintId}/${stepId}-${Date.now()}.png`;
 
     const { error: uploadError } = await admin.storage
       .from("visuals")

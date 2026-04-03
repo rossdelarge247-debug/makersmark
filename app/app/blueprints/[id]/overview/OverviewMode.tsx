@@ -1151,6 +1151,11 @@ export default function OverviewMode({
   async function removeVisual(step: Step) {
     const visual = visualMap.get(step.id);
     if (!visual) return;
+    // Delete the file from Supabase Storage so the URL is fully gone
+    const storagePath = visual.url.split("/storage/v1/object/public/visuals/")[1];
+    if (storagePath) {
+      await supabase.storage.from("visuals").remove([decodeURIComponent(storagePath)]);
+    }
     await supabase.from("visuals").delete().eq("id", visual.id);
     await supabase.from("steps").update({ visual_id: null }).eq("id", step.id);
     setVisualMap((prev) => { const m = new Map(prev); m.delete(step.id); return m; });
