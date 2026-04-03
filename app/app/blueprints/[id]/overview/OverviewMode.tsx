@@ -605,6 +605,7 @@ export default function OverviewMode({
   const [visualGenerating, setVisualGenerating] = useState(false);
   const [visualModification, setVisualModification] = useState("");
   const [visualError, setVisualError] = useState<string | null>(null);
+  const [visualLoadingMsgIdx, setVisualLoadingMsgIdx] = useState(0);
 
   // ---- Interrogation state ----
   const [interrogationLoading, setInterrogationLoading] = useState(false);
@@ -636,6 +637,34 @@ export default function OverviewMode({
       noteCountMap.set(n.target_id, (noteCountMap.get(n.target_id) ?? 0) + 1);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Visual loading messages — cycle while generating
+  // ---------------------------------------------------------------------------
+
+  const VISUAL_LOADING_MSGS = [
+    "Sharpening the pencils…",
+    "Inking the outlines…",
+    "Raiding the Beano archives…",
+    "Applying splodge effects…",
+    "Adding gratuitous custard pie…",
+    "Dennis is helping…",
+    "Colouring inside the lines (mostly)…",
+    "Consulting the Viz art department…",
+    "Applying bold black outlines…",
+    "Nearly there, pet…",
+    "One more panel to go…",
+    "Just drying the ink…",
+  ];
+
+  useEffect(() => {
+    if (!visualGenerating) { setVisualLoadingMsgIdx(0); return; }
+    const interval = setInterval(() => {
+      setVisualLoadingMsgIdx((i) => (i + 1) % VISUAL_LOADING_MSGS.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visualGenerating]);
 
   // ---------------------------------------------------------------------------
   // Auto-seed cells on first load
@@ -2777,9 +2806,27 @@ export default function OverviewMode({
                   {/* Image area */}
                   <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200">
                     {visualGenerating ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                        <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-                        <p className="text-xs text-neutral-400">Creating your Beano/Viz panel…</p>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
+                        {/* Comic panel border effect */}
+                        <div className="w-full border-4 border-dashed border-violet-200 rounded-xl py-6 px-4 flex flex-col items-center gap-3 bg-white/60">
+                          <div className="flex items-center gap-1.5">
+                            {[0,1,2].map((i) => (
+                              <div
+                                key={i}
+                                className="w-2.5 h-2.5 rounded-full bg-violet-400"
+                                style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                              />
+                            ))}
+                          </div>
+                          <p
+                            key={visualLoadingMsgIdx}
+                            className="text-sm font-semibold text-violet-600 text-center leading-snug"
+                            style={{ animation: "fadeIn 0.4s ease-in" }}
+                          >
+                            {VISUAL_LOADING_MSGS[visualLoadingMsgIdx]}
+                          </p>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-widest">Beano / Viz style</p>
+                        </div>
                       </div>
                     ) : visual ? (
                       <Image
