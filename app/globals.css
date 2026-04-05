@@ -213,7 +213,28 @@
   color: #EDB814;
 }
 
-/* --- Studio: typography ------------------------------------------------- */
+/* --- Studio: canvas text colours ----------------------------------------
+   Override neutral-700/800/900 to light values at the `main` level so
+   page headings and labels sitting on the dark canvas are readable.
+   Immediately restore dark values inside bg-white / bg-neutral-50 surfaces
+   (cards, modals, flyouts, storyboard strip) via CSS variable cascade.
+   This requires no component changes — Tailwind's text-neutral-* classes
+   resolve via the nearest ancestor that defines the variable.
+   ----------------------------------------------------------------------- */
+[data-theme="studio"] main {
+  --neutral-900: #F0EDE6;
+  --neutral-800: #D4D0C8;
+  --neutral-700: #A8A49C;
+}
+
+/* Restore inside any white or near-white surface */
+[data-theme="studio"] main .bg-white,
+[data-theme="studio"] main .bg-neutral-50,
+[data-theme="studio"] main .bg-neutral-100 {
+  --neutral-900: #212529;
+  --neutral-800: #343a40;
+  --neutral-700: #495057;
+}
 [data-theme="studio"] h1,
 [data-theme="studio"] h2,
 [data-theme="studio"] h3 {
