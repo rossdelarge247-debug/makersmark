@@ -175,7 +175,7 @@ function StoryboardStrip({
                 <div className="flex-shrink-0 w-28 pt-2 pr-3">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3 h-3 text-neutral-300 flex-shrink-0" />
-                    <span className="text-xs text-neutral-400 font-medium leading-snug" title={actor}>
+                    <span className="micro-label text-neutral-400 leading-snug" title={actor}>
                       {actor}
                     </span>
                   </div>
@@ -217,7 +217,7 @@ function StoryboardStrip({
                             onClick={() => onSelectStep(step)}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span className={`text-[10px] font-semibold ${step.id === editingStepId ? "text-primary-500" : "text-neutral-400"}`}>
+                              <span className={`display-num-sm ${step.id === editingStepId ? "text-primary-500" : "text-neutral-400"}`}>
                                 {globalNum}
                               </span>
                               {step.location && (
@@ -1080,7 +1080,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
             >
               {phase === "actor" && (
                 <>
-                  <h2 className="text-3xl font-bold text-neutral-900 mb-2 leading-tight">
+                  <h2 className="section-label text-3xl text-neutral-900 mb-2 leading-tight">
                     Who is this step happening to?
                   </h2>
                   <p className="text-sm text-neutral-400 mb-8">
@@ -1249,7 +1249,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
             >
               {phase === "service_moment" && (
                 <>
-                  <h2 className="text-3xl font-bold text-neutral-900 mb-2 leading-tight">
+                  <h2 className="section-label text-3xl text-neutral-900 mb-2 leading-tight">
                     What service moment is this part of?
                   </h2>
                   <p className="text-sm text-neutral-400 mb-8">
@@ -1400,7 +1400,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
             >
               {phase === "location" && (
                 <>
-                  <h2 className="text-3xl font-bold text-neutral-900 mb-2 leading-tight">
+                  <h2 className="section-label text-3xl text-neutral-900 mb-2 leading-tight">
                     Where is this happening?
                   </h2>
                   <p className="text-sm text-neutral-400 mb-6">
@@ -1507,7 +1507,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
                     )}
                   </div>
 
-                  <h2 className="text-3xl font-bold text-neutral-900 mb-8 leading-tight">
+                  <h2 className="section-label text-3xl text-neutral-900 mb-8 leading-tight">
                     Describe what is happening at this moment.
                   </h2>
 
@@ -1580,7 +1580,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
                     </p>
                   )}
 
-                  <h2 className="text-3xl font-bold text-neutral-900 mb-8 leading-tight">
+                  <h2 className="section-label text-3xl text-neutral-900 mb-8 leading-tight">
                     Give this step a short title.
                   </h2>
 

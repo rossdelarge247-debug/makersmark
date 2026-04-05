@@ -151,6 +151,10 @@
 /* Nav links */
 [data-theme="studio"] aside nav a {
   color: #8A8680;
+  font-size: 0.675rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 [data-theme="studio"] aside nav a:hover {
   background-color: #282828 !important;
@@ -217,6 +221,56 @@
   letter-spacing: -0.03em;
 }
 
+/* Semantic utility amplifications in Studio */
+[data-theme="studio"] .display-num {
+  font-size: 5rem;
+  font-weight: 100;
+  letter-spacing: -0.05em;
+  color: var(--color-primary-300);
+}
+[data-theme="studio"] .display-num-sm {
+  font-size: 2.5rem;
+  font-weight: 100;
+  letter-spacing: -0.04em;
+  color: var(--color-primary-300);
+}
+[data-theme="studio"] .section-label {
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+[data-theme="studio"] .label-caps {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+[data-theme="studio"] .micro-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+[data-theme="studio"] .ruled-item {
+  border-top-width: 2px;
+}
+
+/* List items become flat ruled rows in Studio */
+[data-theme="studio"] a.ruled-item {
+  border-radius: 0;
+  background: transparent;
+  border-color: transparent;
+  border-width: 0;
+  border-top-width: 2px;
+  border-top-color: var(--neutral-200);
+  border-style: solid;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+[data-theme="studio"] a.ruled-item:hover {
+  background: transparent;
+  box-shadow: none;
+  border-top-color: var(--color-primary-400);
+}
+
 /* =============================================================================
    Base styles
    ============================================================================= */
@@ -251,6 +305,56 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* ── Semantic typography utilities ──────────────────────────────────────
+     These have neutral/invisible defaults in Default and Editorial themes.
+     In Studio they activate fully — TISDD-inspired visual hierarchy.
+     ────────────────────────────────────────────────────────────────────── */
+
+  /* Large thin display number — section / step identifier */
+  .display-num {
+    font-size: 2.5rem;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--color-primary-200);
+  }
+
+  /* Smaller display number — compact spaces (column headers, storyboard) */
+  .display-num-sm {
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--color-primary-200);
+  }
+
+  /* Section / feature label — heavier weight heading */
+  .section-label {
+    font-weight: 700;
+  }
+
+  /* All-caps category / type identifier (As-is, To-be, Personas…) */
+  .label-caps {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Tiny metadata descriptor (actor, location inline tags) */
+  .micro-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--neutral-500);
+  }
+
+  /* Structural top-border rule for list items */
+  .ruled-item {
+    border-top: 1px solid var(--neutral-200);
   }
 }
 

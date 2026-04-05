@@ -1767,7 +1767,7 @@ export default function OverviewMode({
                   style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H }}
                   className="flex-shrink-0 flex items-start px-4 py-3 border-r border-neutral-100 bg-white sticky left-0 z-[5]"
                 >
-                  <span className="text-xs font-medium text-neutral-500 leading-snug pt-0.5">
+                  <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
                   </span>
                 </div>
@@ -1820,7 +1820,7 @@ export default function OverviewMode({
                     onClick={() => openFlyout({ type: "step", step: primaryStep })}
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
-                      <span className="text-[10px] font-semibold text-neutral-400">{i + 1}</span>
+                      <span className="display-num-sm text-neutral-400">{i + 1}</span>
                       <div className="flex items-center gap-1.5">
                         {stepNoteCats.length > 0 && (
                           <div
@@ -1846,7 +1846,7 @@ export default function OverviewMode({
                         )}
                       </div>
                     </div>
-                    <p className="text-[11px] font-semibold text-neutral-700 leading-snug line-clamp-2">
+                    <p className="section-label text-[11px] text-neutral-700 leading-snug line-clamp-2">
                       {col.title}
                     </p>
                     {primaryStep.location && (
@@ -2041,7 +2041,7 @@ export default function OverviewMode({
                   style={{ width: LABEL_W, minWidth: LABEL_W }}
                   className="flex-shrink-0 flex items-start justify-between px-4 py-3 border-r border-neutral-100 bg-white sticky left-0 z-[5]"
                 >
-                  <span className="text-xs font-medium text-neutral-500 leading-snug pt-0.5">
+                  <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
                   </span>
                   <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">

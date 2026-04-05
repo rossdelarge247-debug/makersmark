@@ -138,18 +138,18 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
           <Grid3X3 className="w-5 h-5 text-primary-500" />
-          <h2 className="text-base font-bold text-neutral-900">Blueprints</h2>
+          <h2 className="section-label text-base text-neutral-900">Blueprints</h2>
         </div>
 
         {/* As-is */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">As-is</p>
+        <p className="label-caps text-neutral-400 mb-2">As-is</p>
         {asIsBlueprints.length > 0 ? (
           <div className="flex flex-col gap-2">
             {asIsBlueprints.map((bp) => (
               <Link
                 key={bp.id}
                 href={`/app/projects/${id}/blueprints/${bp.id}`}
-                className="flex items-center justify-between p-5 bg-white rounded-xl border-2 border-primary-100 shadow-sm hover:border-primary-300 hover:shadow-md transition-all duration-150 group"
+                className="ruled-item flex items-center justify-between p-5 bg-white rounded-xl border-2 border-primary-100 shadow-sm hover:border-primary-300 hover:shadow-md transition-all duration-150 group"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors flex-shrink-0">
@@ -180,14 +180,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         )}
 
         {/* To-be */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400 mt-5 mb-2">To-be</p>
+        <p className="label-caps text-neutral-400 mt-5 mb-2">To-be</p>
         {toBeBlueprints.length > 0 ? (
           <div className="flex flex-col gap-2">
             {toBeBlueprints.map((bp) => (
               <Link
                 key={bp.id}
                 href={`/app/projects/${id}/blueprints/${bp.id}`}
-                className="flex items-center justify-between p-5 bg-white rounded-xl border-2 border-amber-100 shadow-sm hover:border-amber-300 hover:shadow-md transition-all duration-150 group"
+                className="ruled-item flex items-center justify-between p-5 bg-white rounded-xl border-2 border-amber-100 shadow-sm hover:border-amber-300 hover:shadow-md transition-all duration-150 group"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors flex-shrink-0">
@@ -229,7 +229,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <div className="py-6 border-t border-neutral-100">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-neutral-400" />
-          <h2 className="text-sm font-semibold text-neutral-700">User Journeys</h2>
+          <h2 className="section-label text-sm text-neutral-700">User Journeys</h2>
           {journeys.length > 0 && (
             <span className="text-xs text-neutral-400">{journeys.length}</span>
           )}
@@ -241,7 +241,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <Link
                 key={journey.id}
                 href={`/app/projects/${id}/journeys/${journey.id}`}
-                className="flex items-center gap-4 p-4 bg-white rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 transition-all duration-150 group"
+                className="ruled-item flex items-center gap-4 p-4 bg-white rounded-xl border border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 transition-all duration-150 group"
               >
                 <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-neutral-50 flex items-center justify-center group-hover:bg-neutral-100 transition-colors">
                   <Zap className="w-4 h-4 text-neutral-500" />
@@ -273,7 +273,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <div className="py-6 border-t border-neutral-100">
         <div className="flex items-center gap-2 mb-3">
           <Users className="w-3.5 h-3.5 text-neutral-400" />
-          <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Personas</h2>
+          <h2 className="label-caps text-neutral-500">Personas</h2>
           {personas.length > 0 && (
             <span className="text-xs text-neutral-400">{personas.length}</span>
           )}
@@ -308,7 +308,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* Future capabilities                                                  */}
       {/* ------------------------------------------------------------------ */}
       <div className="mt-6 pt-6 border-t-2 border-neutral-100">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-300 mb-4">Coming soon</p>
+        <p className="label-caps text-neutral-300 mb-4">Coming soon</p>
         <div className="bg-neutral-50 rounded-xl border border-neutral-100 divide-y divide-neutral-100 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3.5 text-neutral-400">
             <FileText className="w-4 h-4 flex-shrink-0 text-neutral-300" />

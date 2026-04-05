@@ -69,7 +69,7 @@ export default function LandingPage() {
       {/* ── Features summary ─────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-neutral-900 tracking-tight">
+          <h2 className="section-label text-3xl text-neutral-900 tracking-tight">
             Everything your team needs to map a service
           </h2>
           <p className="mt-4 text-lg text-neutral-600 max-w-xl mx-auto">
@@ -112,7 +112,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mb-4">
                 <Icon className="w-5 h-5 text-primary-600" />
               </div>
-              <h3 className="text-base font-semibold text-neutral-900 mb-2">
+              <h3 className="section-label text-base text-neutral-900 mb-2">
                 {title}
               </h3>
               <p className="text-sm text-neutral-600 leading-relaxed">
@@ -127,7 +127,7 @@ export default function LandingPage() {
       <section className="bg-neutral-50 border-y border-neutral-100 py-24">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-neutral-900 tracking-tight">
+            <h2 className="section-label text-3xl text-neutral-900 tracking-tight">
               From blank page to shared blueprint
             </h2>
             <p className="mt-4 text-lg text-neutral-600 max-w-xl mx-auto">
@@ -158,12 +158,12 @@ export default function LandingPage() {
             ].map(({ step, title, description }) => (
               <div key={step} className="flex gap-5">
                 <div className="flex-shrink-0">
-                  <span className="text-3xl font-bold text-primary-200 leading-none">
+                  <span className="display-num leading-none">
                     {step}
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-neutral-900 mb-2">
+                  <h3 className="section-label text-base text-neutral-900 mb-2">
                     {title}
                   </h3>
                   <p className="text-sm text-neutral-600 leading-relaxed">
@@ -213,7 +213,7 @@ export default function LandingPage() {
       {/* ── Footer CTA ───────────────────────────────────────────────────── */}
       <section className="bg-primary-600 py-20">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white tracking-tight text-balance">
+          <h2 className="section-label text-3xl text-white tracking-tight text-balance">
             Ready to map your first blueprint?
           </h2>
           <p className="mt-4 text-lg text-primary-200 max-w-xl mx-auto">

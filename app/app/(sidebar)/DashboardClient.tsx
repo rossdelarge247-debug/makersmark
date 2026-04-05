@@ -114,7 +114,7 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
 // Project card
 // ---------------------------------------------------------------------------
 
-function ProjectCard({ project, onDelete }: { project: Project; onDelete: (id: string) => void }) {
+function ProjectCard({ project, index, onDelete }: { project: Project; index: number; onDelete: (id: string) => void }) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -130,8 +130,9 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: (id: s
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
       <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/projects/${project.id}`)}>
+        <span className="display-num block mb-2">{String(index + 1).padStart(2, "0")}</span>
         <div className="flex items-start mb-3">
-          <h3 className="text-base font-semibold text-neutral-900 leading-snug line-clamp-2">{project.title}</h3>
+          <h3 className="section-label text-base text-neutral-900 leading-snug line-clamp-2">{project.title}</h3>
         </div>
         {project.description && (
           <p className="text-sm text-neutral-500 leading-relaxed line-clamp-2 mb-3">{project.description}</p>
@@ -235,8 +236,8 @@ export default function DashboardClient({ projects: initialProjects, greeting }:
         <EmptyState onCreate={() => setShowModal(true)} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
+          {projects.map((project, i) => (
+            <ProjectCard key={project.id} project={project} index={i} onDelete={handleDelete} />
           ))}
         </div>
       )}
