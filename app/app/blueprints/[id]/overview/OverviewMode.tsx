@@ -600,7 +600,7 @@ export default function OverviewMode({
     for (const v of initialVisuals) m.set(v.step_id, v);
     return m;
   });
-  const [storyboardVisible, setStoryboardVisible] = useState(false);
+  const storyboardVisible = false;
 
   // ---- Visual flyout state ----
   const [visualGenerating, setVisualGenerating] = useState(false);
