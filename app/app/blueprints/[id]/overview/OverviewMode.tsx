@@ -553,7 +553,8 @@ export default function OverviewMode({
 
   // ---- Title editing ----
   const [titleEditing, setTitleEditing] = useState(false);
-  const [titleValue, setTitleValue] = useState(blueprint.name);
+  const defaultTitle = blueprint.name || (blueprint.type === "as_is" ? "As-is blueprint" : "To-be blueprint");
+  const [titleValue, setTitleValue] = useState(defaultTitle);
   const [titleSaving, setTitleSaving] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -743,9 +744,9 @@ export default function OverviewMode({
 
   async function saveTitleEdit() {
     const trimmed = titleValue.trim();
-    if (!trimmed || trimmed === blueprint.name) {
+    if (!trimmed || trimmed === defaultTitle) {
       setTitleEditing(false);
-      setTitleValue(blueprint.name);
+      setTitleValue(defaultTitle);
       return;
     }
     setTitleSaving(true);
@@ -1553,7 +1554,7 @@ export default function OverviewMode({
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors min-w-[120px]"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Project
+          Project overview
         </Link>
 
         {/* Blueprint title — centred, inline editable */}
@@ -1568,7 +1569,7 @@ export default function OverviewMode({
                   if (e.key === "Enter") saveTitleEdit();
                   if (e.key === "Escape") {
                     setTitleEditing(false);
-                    setTitleValue(blueprint.name);
+                    setTitleValue(defaultTitle);
                   }
                 }}
                 className="text-sm font-semibold text-neutral-900 bg-transparent border-b-2 border-primary-400 focus:outline-none text-center px-1 min-w-[200px]"
@@ -1596,22 +1597,6 @@ export default function OverviewMode({
         </div>
 
         <div className="flex items-center gap-3 min-w-[160px] justify-end">
-          <button
-            onClick={() => setStoryboardVisible((v) => !v)}
-            className={`inline-flex items-center gap-1.5 text-xs transition-colors px-2.5 py-1 rounded-lg ${
-              storyboardVisible
-                ? "bg-violet-100 text-violet-600 hover:bg-violet-200"
-                : "text-neutral-400 hover:text-neutral-600"
-            }`}
-          >
-            <Film className="w-3.5 h-3.5" />
-            Storyboard
-            {visualMap.size > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${storyboardVisible ? "bg-violet-200 text-violet-700" : "bg-neutral-100 text-neutral-500"}`}>
-                {visualMap.size}
-              </span>
-            )}
-          </button>
           <button
             onClick={() => {
               setNotesVisible((v) => !v);
