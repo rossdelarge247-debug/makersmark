@@ -1,20 +1,19 @@
 import type { ReactNode } from "react";
-import { LogOut, LayoutDashboard, Map, Settings } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { createClient } from "@/lib/supabase/server";
+import { getUserBlueprints } from "@/lib/supabase/blueprint-actions";
+import SidebarNav from "./SidebarNav";
 
 async function getUser() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const user = await getUser();
+  const [user, projects] = await Promise.all([getUser(), getUserBlueprints()]);
 
-  // Derive a display label from the user's email
   const displayEmail = user?.email ?? "Account";
   const initials = displayEmail.slice(0, 1).toUpperCase();
 
@@ -22,41 +21,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex bg-neutral-50">
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-white border-r border-neutral-200 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-neutral-100">
-          <a
-            href="/app"
-            className="text-lg font-semibold text-neutral-900 tracking-tight"
-          >
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-neutral-100 flex-shrink-0">
+          <a href="/app" className="text-lg font-semibold text-neutral-900 tracking-tight">
             MakersMark
           </a>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <a
-            href="/app"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-          >
-            <LayoutDashboard className="w-4 h-4 text-neutral-500" />
-            Dashboard
-          </a>
-          <a
-            href="/app/blueprints"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-          >
-            <Map className="w-4 h-4 text-neutral-500" />
-            Projects
-          </a>
-          <a
-            href="/app/settings"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-          >
-            <Settings className="w-4 h-4 text-neutral-500" />
-            Settings
-          </a>
-        </nav>
+        {/* Nav — client component for active state */}
+        <SidebarNav projects={projects} />
 
         {/* User account + sign out */}
-        <div className="px-3 py-4 border-t border-neutral-100 space-y-1">
+        <div className="px-3 py-4 border-t border-neutral-100 space-y-1 flex-shrink-0">
           <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-neutral-600">
             <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700 flex-shrink-0">
               {initials}
