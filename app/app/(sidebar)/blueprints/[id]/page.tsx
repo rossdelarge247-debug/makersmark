@@ -145,6 +145,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           <h2 className="text-base font-bold text-neutral-900">Blueprints</h2>
         </div>
 
+        {/* As-is */}
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">As-is</p>
         <Link
           href={`/app/blueprints/${id}/overview`}
           className="flex items-center justify-between p-5 bg-white rounded-xl border-2 border-primary-100 shadow-sm hover:border-primary-300 hover:shadow-md transition-all duration-150 group"
@@ -164,11 +166,17 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </span>
         </Link>
 
-        {/* Placeholder for future multiple blueprints */}
-        <div className="mt-3 flex items-center gap-3 px-5 py-3.5 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-300 text-xs font-medium cursor-not-allowed">
-          <Plus className="w-3.5 h-3.5 flex-shrink-0" />
-          Add another blueprint
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider bg-neutral-100 text-neutral-400 px-2 py-0.5 rounded-full">
+        {/* To-be */}
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400 mt-5 mb-2">To-be</p>
+        <div className="flex items-center gap-4 p-5 rounded-xl border border-dashed border-neutral-200 bg-neutral-50/60">
+          <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+            <Grid3X3 className="w-5 h-5 text-neutral-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-neutral-400">To-be blueprint</p>
+            <p className="text-xs text-neutral-400 mt-0.5">Future state service design — AI generated from your as-is blueprint</p>
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider bg-neutral-200 text-neutral-400 px-2 py-0.5 rounded-full flex-shrink-0">
             Coming soon
           </span>
         </div>
