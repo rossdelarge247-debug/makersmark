@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-neutral-100 flex-shrink-0">
           <a href="/app" className="text-lg font-semibold text-neutral-900 tracking-tight">
-            MakersMark
+            {"SD>Kit"}
           </a>
         </div>
 

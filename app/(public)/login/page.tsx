@@ -214,7 +214,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-neutral-900">Welcome back</h1>
           <p className="mt-2 text-sm text-neutral-600">
-            Sign in to your MakersMark account
+            Sign in to your {"SD>Kit"} account
           </p>
         </div>
 

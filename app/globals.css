@@ -2,10 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* =============================================================================
+   Theme 1 — Default (SD>Kit Blue)
+   Clean, modern SaaS. Slate-blue primary, cool neutral grays.
+   ============================================================================= */
+
+:root,
+[data-theme="default"] {
   --background: #ffffff;
   --foreground: #212529;
+  --surface:    #f8f9fa;
+
+  /* Primary — slate-blue */
+  --color-primary-50:  #f0f4ff;
+  --color-primary-100: #e0e9ff;
+  --color-primary-200: #c7d7fe;
+  --color-primary-300: #a5bbfd;
+  --color-primary-400: #8197fb;
+  --color-primary-500: #6172f3;
+  --color-primary-600: #4e55e8;
+  --color-primary-700: #3f43d0;
+  --color-primary-800: #3437a8;
+  --color-primary-900: #2f3584;
+  --color-primary-950: #1e1f50;
+
+  /* Neutral — cool grays */
+  --neutral-50:  #f8f9fa;
+  --neutral-100: #f1f3f5;
+  --neutral-200: #e9ecef;
+  --neutral-300: #dee2e6;
+  --neutral-400: #ced4da;
+  --neutral-500: #adb5bd;
+  --neutral-600: #868e96;
+  --neutral-700: #495057;
+  --neutral-800: #343a40;
+  --neutral-900: #212529;
+  --neutral-950: #0d0f12;
+
+  /* Shadows — soft, premium */
+  --shadow-card:       0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-elevated:   0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-modal:      0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
 }
+
+/* =============================================================================
+   Theme 2 — Editorial (Inspired by This Is Service Design Doing)
+   Warm cream backgrounds, orange/coral primary, strong borders over shadows.
+   Print-influenced, structured, methodical.
+   ============================================================================= */
+
+[data-theme="editorial"] {
+  --background: #FAFAF7;
+  --foreground: #1C1916;
+  --surface:    #F3F0EA;
+
+  /* Primary — warm coral/orange */
+  --color-primary-50:  #FFF4EE;
+  --color-primary-100: #FFE6D5;
+  --color-primary-200: #FFC9A8;
+  --color-primary-300: #FFA070;
+  --color-primary-400: #F77040;
+  --color-primary-500: #E8511A;
+  --color-primary-600: #D4400F;
+  --color-primary-700: #AE320C;
+  --color-primary-800: #8A270E;
+  --color-primary-900: #6B1E0C;
+  --color-primary-950: #3D0E05;
+
+  /* Neutral — warm tones */
+  --neutral-50:  #FAFAF7;
+  --neutral-100: #F3F0EA;
+  --neutral-200: #E8E3D9;
+  --neutral-300: #D4CCBF;
+  --neutral-400: #B8AFA0;
+  --neutral-500: #948880;
+  --neutral-600: #726860;
+  --neutral-700: #4E4640;
+  --neutral-800: #322E2A;
+  --neutral-900: #1C1916;
+  --neutral-950: #0D0B09;
+
+  /* Shadows — editorial uses borders more than shadows */
+  --shadow-card:       0 0 0 1px rgb(0 0 0 / 0.08);
+  --shadow-card-hover: 0 0 0 1px rgb(0 0 0 / 0.15), 0 2px 8px 0 rgb(0 0 0 / 0.06);
+  --shadow-elevated:   0 0 0 1px rgb(0 0 0 / 0.10), 0 4px 16px 0 rgb(0 0 0 / 0.08);
+  --shadow-modal:      0 0 0 1px rgb(0 0 0 / 0.12), 0 16px 40px 0 rgb(0 0 0 / 0.12);
+}
+
+/* =============================================================================
+   Base styles
+   ============================================================================= */
 
 @layer base {
   * {
@@ -19,6 +106,18 @@
     font-variation-settings: "opsz" 32;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Editorial theme — slightly tighter, more structured feel */
+  [data-theme="editorial"] body,
+  [data-theme="editorial"] {
+    letter-spacing: -0.01em;
+  }
+
+  [data-theme="editorial"] h1,
+  [data-theme="editorial"] h2,
+  [data-theme="editorial"] h3 {
+    letter-spacing: -0.03em;
   }
 }
 

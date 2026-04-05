@@ -6,7 +6,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <header className="border-b border-neutral-100">
         <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="text-lg font-semibold text-neutral-900 tracking-tight">
-            MakersMark
+            {"SD>Kit"}
           </a>
           <div className="flex items-center gap-6">
             <a
@@ -39,7 +39,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <main className="flex-1">{children}</main>
       <footer className="border-t border-neutral-100 py-8">
         <div className="max-w-7xl mx-auto px-6 text-sm text-neutral-500 text-center">
-          &copy; {new Date().getFullYear()} MakersMark. All rights reserved.
+          &copy; {new Date().getFullYear()} {"SD>Kit"}. All rights reserved.
         </div>
       </footer>
     </div>

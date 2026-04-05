@@ -19,7 +19,7 @@ const steps = [
     phase: "Capture",
     title: "Work through each layer",
     description:
-      "MakersMark guides you through each swimlane in turn. Start with customer actions — what does the customer do in each phase? Then move to touchpoints, frontstage interactions, backstage processes, and support systems. Guided prompts stop the session going blank.",
+      "SD>Kit guides you through each swimlane in turn. Start with customer actions — what does the customer do in each phase? Then move to touchpoints, frontstage interactions, backstage processes, and support systems. Guided prompts stop the session going blank.",
     details: [
       "Customer actions: what is the customer doing?",
       "Touchpoints: where do they interact with the service?",
@@ -72,7 +72,7 @@ const steps = [
     phase: "Share",
     title: "Get it in front of stakeholders",
     description:
-      "When you're ready, generate a shareable snapshot link. Stakeholders get a clean, read-only view of the blueprint without needing a MakersMark account. Export to PDF or PNG for slide decks and documentation. Snapshots are version-stamped so you always know what was shared.",
+      "When you're ready, generate a shareable snapshot link. Stakeholders get a clean, read-only view of the blueprint without needing a SD>Kit account. Export to PDF or PNG for slide decks and documentation. Snapshots are version-stamped so you always know what was shared.",
     details: [
       "Generate a snapshot link with one click",
       "Shareable without requiring a login",
@@ -92,7 +92,7 @@ export default function HowItWorksPage() {
           <span className="text-primary-600">shared blueprint</span>
         </h1>
         <p className="mt-6 text-xl text-neutral-600 max-w-2xl mx-auto text-balance">
-          A step-by-step walkthrough of the MakersMark workflow — from setting
+          A step-by-step walkthrough of the {"SD>Kit"} workflow — from setting
           up your first blueprint to sharing it with stakeholders.
         </p>
       </section>

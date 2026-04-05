@@ -22,7 +22,7 @@ export default function LandingPage() {
           <span className="text-primary-600">capture the whole picture</span>
         </h1>
         <p className="mt-6 text-xl text-neutral-600 max-w-2xl mx-auto text-balance leading-relaxed">
-          MakersMark guides your team through every layer of a service
+          {"SD>Kit"} guides your team through every layer of a service
           experience — from what customers see to the systems that make it
           happen. Design, capture, interrogate, and share in one place.
         </p>
@@ -73,7 +73,7 @@ export default function LandingPage() {
             Everything your team needs to map a service
           </h2>
           <p className="mt-4 text-lg text-neutral-600 max-w-xl mx-auto">
-            From first discovery session to polished deliverable — MakersMark
+            From first discovery session to polished deliverable — {"SD>Kit"}
             keeps your whole service team aligned.
           </p>
         </div>
@@ -191,7 +191,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <blockquote className="text-2xl font-medium text-neutral-800 text-balance leading-snug">
             &ldquo;We used to spend two days prepping a service blueprint in
-            sticky notes and slides. MakersMark halved our prep time and gave
+            sticky notes and slides. {"SD>Kit"} halved our prep time and gave
             everyone a shared source of truth.&rdquo;
           </blockquote>
           <div className="mt-6 flex items-center justify-center gap-3">

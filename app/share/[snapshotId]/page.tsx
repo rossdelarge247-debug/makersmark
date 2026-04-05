@@ -6,7 +6,7 @@ export default function SharedSnapshotPage({ params }: SharedSnapshotPageProps) 
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="bg-white border-b border-neutral-200 h-14 flex items-center px-6">
-        <span className="text-sm font-medium text-neutral-700">MakersMark</span>
+        <span className="text-sm font-medium text-neutral-700">{"SD>Kit"}</span>
         <span className="mx-3 text-neutral-300">/</span>
         <span className="text-sm text-neutral-500">Shared blueprint</span>
       </header>

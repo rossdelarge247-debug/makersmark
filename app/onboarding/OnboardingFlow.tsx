@@ -62,10 +62,10 @@ export default function OnboardingFlow() {
               <Map className="w-7 h-7 text-primary-600" />
             </div>
             <h1 className="text-4xl font-bold text-neutral-900 text-center leading-tight">
-              Welcome to MakersMark
+              Welcome to {"SD>Kit"}
             </h1>
             <p className="mt-5 text-lg text-neutral-600 text-center leading-relaxed">
-              MakersMark helps you design, capture, and share professional
+              {"SD>Kit"} helps you design, capture, and share professional
               service blueprints — so your whole team understands exactly how
               your service works.
             </p>

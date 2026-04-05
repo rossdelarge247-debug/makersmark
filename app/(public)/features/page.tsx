@@ -31,7 +31,7 @@ export default function FeaturesPage() {
           <span className="text-primary-600">actually work</span>
         </h1>
         <p className="mt-6 text-xl text-neutral-600 max-w-2xl mx-auto text-balance">
-          Every feature in MakersMark exists to reduce friction between your
+          Every feature in {"SD>Kit"} exists to reduce friction between your
           team&rsquo;s thinking and a finished, shareable blueprint.
         </p>
       </section>
@@ -48,7 +48,7 @@ export default function FeaturesPage() {
             </h2>
             <p className="text-lg text-neutral-600 leading-relaxed mb-6">
               Most blueprinting sessions stall because teams don&rsquo;t know
-              where to start. MakersMark walks you through every layer
+              where to start. {"SD>Kit"} walks you through every layer
               systematically — customer actions, touchpoints, frontstage
               interactions, backstage processes, and support systems.
             </p>
@@ -119,7 +119,7 @@ export default function FeaturesPage() {
               Notes &amp; tagging
             </h2>
             <p className="text-lg text-neutral-600 leading-relaxed mb-6">
-              A blueprint without context is just a grid. MakersMark lets you
+              A blueprint without context is just a grid. {"SD>Kit"} lets you
               attach rich notes to any cell — capturing the conversation behind
               the decision, not just the decision itself.
             </p>
@@ -229,7 +229,7 @@ export default function FeaturesPage() {
             See every feature in action
           </h2>
           <p className="mt-4 text-lg text-neutral-600 max-w-xl mx-auto">
-            Create a free account and take MakersMark through a real blueprint.
+            Create a free account and take {"SD>Kit"} through a real blueprint.
           </p>
           <div className="mt-8 flex items-center justify-center gap-4 flex-wrap">
             <a
