@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const initials = displayEmail.slice(0, 1).toUpperCase();
 
   return (
-    <div className="min-h-screen flex bg-neutral-50">
+    <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-white border-r border-neutral-200 flex flex-col">
         {/* Logo */}

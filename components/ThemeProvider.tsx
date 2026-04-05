@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "default" | "editorial";
+export type Theme = "default" | "editorial" | "studio";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -26,7 +26,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Read from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (stored === "default" || stored === "editorial") {
+    if (stored === "default" || stored === "editorial" || stored === "studio") {
       setThemeState(stored);
       document.documentElement.setAttribute("data-theme", stored);
     }

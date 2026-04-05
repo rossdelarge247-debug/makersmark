@@ -47,7 +47,7 @@
 }
 
 /* =============================================================================
-   Theme 2 — Editorial (Inspired by This Is Service Design Doing)
+   Theme 2 — Editorial
    Warm cream backgrounds, orange/coral primary, strong borders over shadows.
    Print-influenced, structured, methodical.
    ============================================================================= */
@@ -88,6 +88,133 @@
   --shadow-card-hover: 0 0 0 1px rgb(0 0 0 / 0.15), 0 2px 8px 0 rgb(0 0 0 / 0.06);
   --shadow-elevated:   0 0 0 1px rgb(0 0 0 / 0.10), 0 4px 16px 0 rgb(0 0 0 / 0.08);
   --shadow-modal:      0 0 0 1px rgb(0 0 0 / 0.12), 0 16px 40px 0 rgb(0 0 0 / 0.12);
+}
+
+/* =============================================================================
+   Theme 3 — Studio (TISDD-inspired)
+   Dark charcoal canvas, near-black sidebar, pure white cards floating on dark.
+   Golden amber accent. High contrast, structured, design-publication feel.
+   ============================================================================= */
+
+[data-theme="studio"] {
+  --background: #242424;
+  --foreground: #F5F0E8;
+  --surface:    #1A1A1A;
+
+  /* Primary — golden amber (dark enough for white text at AA contrast) */
+  --color-primary-50:  #FEFAE8;
+  --color-primary-100: #FDF2C0;
+  --color-primary-200: #FAE37C;
+  --color-primary-300: #F5CC28;
+  --color-primary-400: #EDB814;
+  --color-primary-500: #D09A0C;
+  --color-primary-600: #92680A;  /* button bg — white text ≈ 4.8:1 contrast */
+  --color-primary-700: #7A5508;
+  --color-primary-800: #5E4108;
+  --color-primary-900: #473208;
+  --color-primary-950: #2A1C04;
+
+  /* Neutral — keep light values so white cards read correctly */
+  --neutral-50:  #f8f9fa;
+  --neutral-100: #f1f3f5;
+  --neutral-200: #e9ecef;
+  --neutral-300: #dee2e6;
+  --neutral-400: #ced4da;
+  --neutral-500: #adb5bd;
+  --neutral-600: #868e96;
+  --neutral-700: #495057;
+  --neutral-800: #343a40;
+  --neutral-900: #212529;
+  --neutral-950: #0d0f12;
+
+  /* Shadows — crisp, minimal on dark canvas */
+  --shadow-card:       0 0 0 1px rgb(0 0 0 / 0.15);
+  --shadow-card-hover: 0 0 0 1px rgb(0 0 0 / 0.25), 0 4px 12px 0 rgb(0 0 0 / 0.20);
+  --shadow-elevated:   0 0 0 1px rgb(0 0 0 / 0.18), 0 8px 24px 0 rgb(0 0 0 / 0.20);
+  --shadow-modal:      0 0 0 1px rgb(0 0 0 / 0.24), 0 20px 40px 0 rgb(0 0 0 / 0.30);
+}
+
+/* --- Studio: sidebar — near-black --------------------------------------- */
+[data-theme="studio"] aside {
+  background-color: #181818;
+  border-right-color: #2E2E2E;
+}
+
+/* Logo link */
+[data-theme="studio"] aside > div:first-child {
+  border-bottom-color: #2E2E2E;
+}
+[data-theme="studio"] aside > div:first-child a {
+  color: #F5F0E8;
+}
+
+/* Nav links */
+[data-theme="studio"] aside nav a {
+  color: #8A8680;
+}
+[data-theme="studio"] aside nav a:hover {
+  background-color: #282828 !important;
+  color: #F5F0E8 !important;
+}
+
+/* Active workspace / settings link */
+[data-theme="studio"] aside nav .bg-neutral-100 {
+  background-color: #2A2A2A;
+  color: #F5F0E8;
+}
+
+/* Active project link */
+[data-theme="studio"] aside nav .bg-primary-50 {
+  background-color: rgba(237, 184, 20, 0.12);
+}
+[data-theme="studio"] aside nav .text-primary-700 {
+  color: #EDB814;
+}
+[data-theme="studio"] aside nav .text-primary-500,
+[data-theme="studio"] aside nav .text-primary-400 {
+  color: #EDB814;
+}
+
+/* Project list border-l divider */
+[data-theme="studio"] aside nav .border-l {
+  border-color: #2E2E2E;
+}
+[data-theme="studio"] aside nav .text-neutral-400,
+[data-theme="studio"] aside nav .text-neutral-500 {
+  color: #5A5652;
+}
+
+/* Bottom user / sign-out row */
+[data-theme="studio"] aside > div:last-child {
+  border-top-color: #2E2E2E;
+}
+[data-theme="studio"] aside > div:last-child .text-neutral-600,
+[data-theme="studio"] aside > div:last-child .text-neutral-700 {
+  color: #8A8680;
+}
+[data-theme="studio"] aside > div:last-child .text-neutral-400 {
+  color: #5A5652;
+}
+[data-theme="studio"] aside > div:last-child .hover\:bg-neutral-100:hover {
+  background-color: #282828;
+  color: #F5F0E8;
+}
+[data-theme="studio"] aside > div:last-child .hover\:text-neutral-900:hover {
+  color: #F5F0E8;
+}
+[data-theme="studio"] aside .bg-primary-100 {
+  background-color: rgba(237, 184, 20, 0.15);
+}
+[data-theme="studio"] aside .text-primary-700 {
+  color: #EDB814;
+}
+
+/* --- Studio: typography ------------------------------------------------- */
+[data-theme="studio"] h1,
+[data-theme="studio"] h2,
+[data-theme="studio"] h3 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 /* =============================================================================
