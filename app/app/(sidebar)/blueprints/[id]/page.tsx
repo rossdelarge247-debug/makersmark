@@ -10,6 +10,7 @@ import {
 } from "@/lib/supabase/blueprint-actions";
 import type { Blueprint, Step } from "@/lib/types/blueprint";
 import InlineTitle from "@/components/blueprints/InlineTitle";
+import InlineDescription from "@/components/blueprints/InlineDescription";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
@@ -110,11 +111,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <div className="mb-10">
         <InlineTitle blueprintId={id} initialTitle={blueprint.title} />
 
-        {blueprint.description && (
-          <p className="mt-2 text-sm text-neutral-500 leading-relaxed max-w-2xl">
-            {blueprint.description}
-          </p>
-        )}
+        <div className="mt-6">
+          <InlineDescription blueprintId={id} initialDescription={blueprint.description} />
+        </div>
 
         {/* Metadata row */}
         <div className="mt-4 flex flex-wrap items-center gap-4">
