@@ -148,8 +148,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <Grid3X3 className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-900">Service Blueprint</p>
-              <p className="text-xs text-neutral-500 mt-0.5">Swimlane grid</p>
+              <p className="text-sm font-semibold text-neutral-900">{blueprint.title}</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Created {formatDate(blueprint.created_at)}</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold group-hover:bg-primary-700 transition-colors flex-shrink-0">
@@ -195,7 +195,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <Zap className="w-4 h-4 text-neutral-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-800">User Journey</p>
+              <p className="text-sm font-medium text-neutral-800">{blueprint.title}</p>
               <p className="text-xs text-neutral-400">{steps.length} step{steps.length !== 1 ? "s" : ""} captured</p>
             </div>
             <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 transition-colors" />
