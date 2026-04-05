@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { ArrowRight, Zap, Grid3X3, StickyNote, Sparkles, Map } from "lucide-react";
 import { completeOnboarding, markOnboardingComplete } from "@/lib/supabase/auth-actions";
-import { createBlueprint } from "@/lib/supabase/blueprint-actions";
+import { createProject } from "@/lib/supabase/project-actions";
 import { useRouter } from "next/navigation";
 
 const TOTAL_STEPS = 4;
@@ -27,12 +27,12 @@ export default function OnboardingFlow() {
 
   function handleCreate() {
     startTransition(async () => {
-      const id = await createBlueprint({
-        title: blueprintTitle || "My first blueprint",
-        description: blueprintDescription,
-      });
+      const id = await createProject(
+        blueprintTitle || "My first project",
+        blueprintDescription,
+      );
       await markOnboardingComplete();
-      router.push(`/app/blueprints/${id}`);
+      router.push(`/app/projects/${id}`);
     });
   }
 

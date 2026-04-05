@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, Plus, MapPin, User, Pencil, Trash2, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step, Visual } from "@/lib/types/blueprint";
+import type { UserJourney, JourneyStep as Step, Visual } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,7 +93,7 @@ function groupStepsByActor(steps: Step[], primaryUser: string | null): { actor: 
 
 interface StoryboardStripProps {
   steps: Step[];
-  blueprint: Blueprint;
+  blueprint: UserJourney;
   editingStepId: string | null;
   scrollTrigger: number;
   visualMap: Map<string, Visual>;
@@ -122,7 +122,7 @@ function StoryboardStrip({
   onGenerateAll,
   onRegenerateVisual,
 }: StoryboardStripProps) {
-  const primary = blueprint.primary_user?.trim() || "Primary user";
+  const primary = "Primary user";
   const rows = groupStepsByActor(steps, primary);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -422,12 +422,12 @@ function StoryboardStrip({
 // ---------------------------------------------------------------------------
 
 interface CaptureModeProps {
-  blueprint: Blueprint;
+  journey: UserJourney;
   initialSteps: Step[];
   initialVisuals: Visual[];
 }
 
-export default function CaptureMode({ blueprint, initialSteps, initialVisuals }: CaptureModeProps) {
+export default function CaptureMode({ journey: blueprint, initialSteps, initialVisuals }: CaptureModeProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -449,15 +449,10 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
   const [scrollTrigger, setScrollTrigger] = useState(0);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [newActorRole, setNewActorRole] = useState<"frontstage" | "backstage" | null>(null);
-  const [actorRoles, setActorRoles] = useState<Record<string, "customer" | "frontstage" | "backstage">>({
-    ...(blueprint.actor_roles ?? {}),
-    ...(blueprint.primary_user?.trim()
-      ? { [blueprint.primary_user.trim().toLowerCase()]: "customer" as const }
-      : {}),
-  });
+  const [actorRoles, setActorRoles] = useState<Record<string, "customer" | "frontstage" | "backstage">>({});
 
   const [capture, setCapture] = useState<CaptureState>({
-    actor: blueprint.primary_user?.trim() || "",
+    actor: "",
     service_moment: "",
     location: "",
     description: "",
@@ -477,8 +472,8 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Derived
-  const knownActors = getUniqueActors(steps, blueprint.primary_user);
-  const primaryUser = blueprint.primary_user?.trim() || "";
+  const knownActors = getUniqueActors(steps, null);
+  const primaryUser = "";
   const knownLocations: string[] = Array.from(
     new Set(steps.map((s) => s.location?.trim()).filter(Boolean) as string[])
   );
@@ -531,7 +526,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
           stepTitle: step.title,
           stepDescription: step.description,
           blueprintId: blueprint.id,
-          scenario: blueprint.scenario,
+          scenario: null,
           actorName: step.actor,
           modification: null,
         }),
@@ -625,7 +620,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
     const stepIndex = steps.findIndex((s) => s.id === stepId);
     if (stepIndex === -1) return;
 
-    await supabase.from("steps").delete().eq("id", stepId);
+    await supabase.from("journey_steps").delete().eq("id", stepId);
 
     // Re-order remaining steps
     const remaining = steps.filter((s) => s.id !== stepId);
@@ -633,7 +628,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
     if (updates.length > 0) {
       await Promise.all(
         updates.map(({ id, order_index }) =>
-          supabase.from("steps").update({ order_index }).eq("id", id)
+          supabase.from("journey_steps").update({ order_index }).eq("id", id)
         )
       );
     }
@@ -707,15 +702,11 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
         ? addActorInput.trim()
         : capture.actor;
 
-    // Persist role for new actors
+    // Track role locally (journeys don't persist actor_roles — that lives on blueprints)
     let updatedRoles = actorRoles;
     if (showAddActor && addActorInput.trim() && newActorRole) {
       updatedRoles = { ...actorRoles, [finalActor.toLowerCase()]: newActorRole };
       setActorRoles(updatedRoles);
-      supabase
-        .from("blueprints")
-        .update({ actor_roles: updatedRoles, updated_at: new Date().toISOString() })
-        .eq("id", blueprint.id);
     }
 
     const role = updatedRoles[finalActor.toLowerCase()];
@@ -813,7 +804,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
       if (capture.editingStepId) {
         // Update
         const { error } = await supabase
-          .from("steps")
+          .from("journey_steps")
           .update({
             title: capture.title.trim(),
             description: capture.description.trim() || null,
@@ -850,7 +841,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
           await Promise.all(
             toShift.map((s) =>
               supabase
-                .from("steps")
+                .from("journey_steps")
                 .update({ order_index: s.order_index + 1 })
                 .eq("id", s.id)
             )
@@ -858,9 +849,9 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
         }
 
         const { data, error } = await supabase
-          .from("steps")
+          .from("journey_steps")
           .insert({
-            blueprint_id: blueprint.id,
+            journey_id: blueprint.id,
             title: capture.title.trim(),
             description: capture.description.trim() || null,
             actor: capture.actor.trim() || null,
@@ -892,7 +883,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
       }
 
       if (goToOverview) {
-        router.push(`/app/blueprints/${blueprint.id}/overview`);
+        router.push(`/app/projects/${blueprint.project_id}`);
         return;
       }
 
@@ -958,14 +949,14 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
       {/* ------------------------------------------------------------------ */}
       <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-100">
         <Link
-          href={`/app/blueprints/${blueprint.id}`}
+          href={`/app/projects/${blueprint.project_id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          {blueprint.title}
+          {blueprint.name}
         </Link>
         <Link
-          href={`/app/blueprints/${blueprint.id}/overview`}
+          href={blueprint.blueprint_id ? `/app/projects/${blueprint.project_id}/blueprints/${blueprint.blueprint_id}` : `/app/projects/${blueprint.project_id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
         >
           Blueprint view
@@ -1040,7 +1031,7 @@ export default function CaptureMode({ blueprint, initialSteps, initialVisuals }:
               </button>
               {steps.length > 0 && (
                 <Link
-                  href={`/app/blueprints/${blueprint.id}/overview`}
+                  href={blueprint.blueprint_id ? `/app/projects/${blueprint.project_id}/blueprints/${blueprint.blueprint_id}` : `/app/projects/${blueprint.project_id}`}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-600 text-sm font-medium hover:bg-neutral-50 transition-colors"
                 >
                   View blueprint

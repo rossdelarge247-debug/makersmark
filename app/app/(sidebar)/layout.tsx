@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { createClient } from "@/lib/supabase/server";
-import { getUserBlueprints } from "@/lib/supabase/blueprint-actions";
+import { getUserProjects } from "@/lib/supabase/project-actions";
 import SidebarNav from "./SidebarNav";
 
 async function getUser() {
@@ -12,7 +12,7 @@ async function getUser() {
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const [user, projects] = await Promise.all([getUser(), getUserBlueprints()]);
+  const [user, projects] = await Promise.all([getUser(), getUserProjects()]);
 
   const displayEmail = user?.email ?? "Account";
   const initials = displayEmail.slice(0, 1).toUpperCase();

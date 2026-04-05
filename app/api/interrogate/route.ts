@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
   const prompt = `You are an expert service designer. Interrogate the following moment in a service blueprint and return structured analysis.
 
-Blueprint: ${blueprintContext?.title || "A service"}
+Blueprint: ${blueprintContext?.name || blueprintContext?.title || "A service"}
 User goal: ${blueprintContext?.user_goal || "not specified"}
 Primary user: ${blueprintContext?.primary_user || "Customer"}
 Scenario: ${blueprintContext?.scenario || "not specified"}

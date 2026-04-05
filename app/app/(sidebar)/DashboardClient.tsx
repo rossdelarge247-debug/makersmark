@@ -3,11 +3,11 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, FolderOpen, ArrowRight, X } from "lucide-react";
-import { createBlueprint, deleteBlueprint } from "@/lib/supabase/blueprint-actions";
-import type { Blueprint } from "@/lib/supabase/blueprint-actions";
+import { createProject, deleteProject } from "@/lib/supabase/project-actions";
+import type { Project } from "@/lib/types/blueprint";
 
 interface DashboardClientProps {
-  blueprints: Blueprint[];
+  projects: Project[];
   greeting: string;
 }
 
@@ -18,7 +18,6 @@ function formatDate(dateString: string): string {
     year: "numeric",
   });
 }
-
 
 // ---------------------------------------------------------------------------
 // New project modal
@@ -35,17 +34,12 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
   const [isCreating, setIsCreating] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
+  useEffect(() => { nameRef.current?.focus(); }, []);
 
   async function handleCreate() {
     if (!name.trim()) return;
     setIsCreating(true);
-    const id = await createBlueprint({
-      title: name.trim(),
-      description: description.trim(),
-    });
+    const id = await createProject(name.trim(), description.trim());
     onCreated(id);
   }
 
@@ -57,8 +51,6 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm" onKeyDown={handleKeyDown}>
       <div className="w-full max-w-md mx-4 bg-white rounded-2xl shadow-modal border border-neutral-200 overflow-hidden">
-
-        {/* Header */}
         <div className="flex items-center justify-between px-8 pt-8 pb-0">
           <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">New project</p>
           <button onClick={onClose} className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
@@ -66,7 +58,6 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
           </button>
         </div>
 
-        {/* Body */}
         {isCreating ? (
           <div className="px-8 py-12 flex flex-col items-center gap-4">
             <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
@@ -75,12 +66,9 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
         ) : (
           <div className="px-8 pt-6 pb-8">
             <h2 className="text-2xl font-bold text-neutral-900 mb-6">What are we working on?</h2>
-
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  Project name
-                </label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Project name</label>
                 <input
                   ref={nameRef}
                   type="text"
@@ -90,7 +78,6 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   Describe this project
@@ -105,11 +92,8 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
                 />
               </div>
             </div>
-
             <div className="mt-8 flex items-center justify-between gap-4">
-              <button onClick={onClose} className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors">
-                Cancel
-              </button>
+              <button onClick={onClose} className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors">Cancel</button>
               <button
                 onClick={handleCreate}
                 disabled={!name.trim()}
@@ -130,7 +114,7 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
 // Project card
 // ---------------------------------------------------------------------------
 
-function ProjectCard({ blueprint, onDelete }: { blueprint: Blueprint; onDelete: (id: string) => void }) {
+function ProjectCard({ project, onDelete }: { project: Project; onDelete: (id: string) => void }) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -138,27 +122,26 @@ function ProjectCard({ blueprint, onDelete }: { blueprint: Blueprint; onDelete: 
   function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); return; }
     startDeleteTransition(async () => {
-      await deleteBlueprint(blueprint.id);
-      onDelete(blueprint.id);
+      await deleteProject(project.id);
+      onDelete(project.id);
     });
   }
 
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
-      <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}>
+      <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/projects/${project.id}`)}>
         <div className="flex items-start mb-3">
-          <h3 className="text-base font-semibold text-neutral-900 leading-snug line-clamp-2">{blueprint.title}</h3>
+          <h3 className="text-base font-semibold text-neutral-900 leading-snug line-clamp-2">{project.title}</h3>
         </div>
-        {blueprint.description && (
-          <p className="text-sm text-neutral-500 leading-relaxed line-clamp-2 mb-3">{blueprint.description}</p>
+        {project.description && (
+          <p className="text-sm text-neutral-500 leading-relaxed line-clamp-2 mb-3">{project.description}</p>
         )}
-        <p className="text-xs text-neutral-400">{formatDate(blueprint.created_at)}</p>
+        <p className="text-xs text-neutral-400">{formatDate(project.created_at)}</p>
       </div>
 
-      {/* Actions */}
       <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between gap-3">
         <button
-          onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}
+          onClick={() => router.push(`/app/projects/${project.id}`)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold hover:bg-primary-700 transition-colors"
         >
           View project
@@ -211,36 +194,32 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 // Main
 // ---------------------------------------------------------------------------
 
-export default function DashboardClient({ blueprints: initialBlueprints, greeting }: DashboardClientProps) {
+export default function DashboardClient({ projects: initialProjects, greeting }: DashboardClientProps) {
   const router = useRouter();
-  const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [showModal, setShowModal] = useState(false);
 
   function handleCreated(id: string) {
-    router.push(`/app/blueprints/${id}`);
+    router.push(`/app/projects/${id}`);
   }
 
   function handleDelete(id: string) {
-    setBlueprints((prev) => prev.filter((b) => b.id !== id));
+    setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
   return (
     <div className="max-w-5xl mx-auto">
       {showModal && (
-        <NewProjectModal
-          onClose={() => setShowModal(false)}
-          onCreated={handleCreated}
-        />
+        <NewProjectModal onClose={() => setShowModal(false)} onCreated={handleCreated} />
       )}
 
-      {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-10">
         <div>
           <h1 className="text-3xl font-bold text-neutral-900">{greeting}</h1>
           <p className="mt-1.5 text-neutral-500 text-base">
-            {blueprints.length === 0
+            {projects.length === 0
               ? "Get started by creating your first project."
-              : `You have ${blueprints.length} project${blueprints.length === 1 ? "" : "s"}.`}
+              : `You have ${projects.length} project${projects.length === 1 ? "" : "s"}.`}
           </p>
         </div>
         <button
@@ -252,13 +231,12 @@ export default function DashboardClient({ blueprints: initialBlueprints, greetin
         </button>
       </div>
 
-      {/* Grid */}
-      {blueprints.length === 0 ? (
+      {projects.length === 0 ? (
         <EmptyState onCreate={() => setShowModal(true)} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {blueprints.map((blueprint) => (
-            <ProjectCard key={blueprint.id} blueprint={blueprint} onDelete={handleDelete} />
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
           ))}
         </div>
       )}

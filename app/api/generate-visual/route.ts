@@ -131,8 +131,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Database error: ${dbError?.message ?? "no data returned"}` }, { status: 500 });
     }
 
-    // Update step.visual_id
-    await admin.from("steps").update({ visual_id: visual.id }).eq("id", stepId);
+    // Update journey_step.visual_id
+    await admin.from("journey_steps").update({ visual_id: visual.id }).eq("id", stepId);
 
     return NextResponse.json({ visual });
   } catch (err) {

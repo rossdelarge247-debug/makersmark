@@ -3,17 +3,17 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboard, Settings, ChevronRight, FolderOpen } from "lucide-react";
-import type { Blueprint } from "@/lib/types/blueprint";
+import type { Project } from "@/lib/types/blueprint";
 
 interface SidebarNavProps {
-  projects: Blueprint[];
+  projects: Project[];
 }
 
 export default function SidebarNav({ projects }: SidebarNavProps) {
   const pathname = usePathname();
 
   const isWorkspace = pathname === "/app";
-  const activeProjectId = pathname.match(/\/app\/blueprints\/([^/]+)/)?.[1] ?? null;
+  const activeProjectId = pathname.match(/\/app\/projects\/([^/]+)/)?.[1] ?? null;
   const isSettings = pathname.startsWith("/app/settings");
 
   return (
@@ -38,7 +38,7 @@ export default function SidebarNav({ projects }: SidebarNavProps) {
           return (
             <Link
               key={project.id}
-              href={`/app/blueprints/${project.id}`}
+              href={`/app/projects/${project.id}`}
               className={`flex items-center gap-2 pl-2 pr-2 py-1.5 rounded-lg text-xs transition-colors group ${
                 isActive
                   ? "bg-primary-50 text-primary-700 font-semibold"

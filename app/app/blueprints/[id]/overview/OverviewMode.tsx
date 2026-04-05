@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import type { Blueprint, Step, Swimlane, Cell, Note, NoteCategory, AISuggestionItem, InterrogationGroupType, Visual } from "@/lib/types/blueprint";
+import type { Blueprint, BlueprintStep as Step, Swimlane, Cell, Note, NoteCategory, AISuggestionItem, InterrogationGroupType, Visual } from "@/lib/types/blueprint";
 
 // ---------------------------------------------------------------------------
 // Note category config
@@ -553,7 +553,7 @@ export default function OverviewMode({
 
   // ---- Title editing ----
   const [titleEditing, setTitleEditing] = useState(false);
-  const [titleValue, setTitleValue] = useState(blueprint.title);
+  const [titleValue, setTitleValue] = useState(blueprint.name);
   const [titleSaving, setTitleSaving] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -743,14 +743,14 @@ export default function OverviewMode({
 
   async function saveTitleEdit() {
     const trimmed = titleValue.trim();
-    if (!trimmed || trimmed === blueprint.title) {
+    if (!trimmed || trimmed === blueprint.name) {
       setTitleEditing(false);
-      setTitleValue(blueprint.title);
+      setTitleValue(blueprint.name);
       return;
     }
     setTitleSaving(true);
     const now = new Date().toISOString();
-    await supabase.from("blueprints").update({ title: trimmed, updated_at: now }).eq("id", blueprint.id);
+    await supabase.from("blueprints").update({ name: trimmed, updated_at: now }).eq("id", blueprint.id);
     setLastEdited(now);
     setTitleSaving(false);
     setTitleEditing(false);
@@ -842,7 +842,7 @@ export default function OverviewMode({
           stepTitle: next.step.title,
           swimlaneName: next.swimlane?.name,
           blueprintContext: {
-            title: blueprint.title,
+            title: blueprint.name,
             user_goal: blueprint.user_goal,
             primary_user: blueprint.primary_user,
             scenario: blueprint.scenario,
@@ -1076,7 +1076,7 @@ export default function OverviewMode({
     const maxOrder = steps.reduce((max, s) => Math.max(max, s.order_index), -1);
     const now = new Date().toISOString();
     const { data } = await supabase
-      .from("steps")
+      .from("blueprint_steps")
       .insert({
         blueprint_id: blueprint.id,
         title,
@@ -1157,7 +1157,7 @@ export default function OverviewMode({
       await supabase.storage.from("visuals").remove([decodeURIComponent(storagePath)]);
     }
     await supabase.from("visuals").delete().eq("id", visual.id);
-    await supabase.from("steps").update({ visual_id: null }).eq("id", step.id);
+    await supabase.from("blueprint_steps").update({ visual_id: null }).eq("id", step.id);
     setVisualMap((prev) => { const m = new Map(prev); m.delete(step.id); return m; });
     setSteps((prev) => prev.map((s) => (s.id === step.id ? { ...s, visual_id: null } : s)));
   }
@@ -1424,7 +1424,7 @@ export default function OverviewMode({
 
     const doUpdate = (stepId: string, orderIndex: number) =>
       new Promise<void>((resolve) => {
-        supabase.from("steps").update({ order_index: orderIndex }).eq("id", stepId).then(() => resolve());
+        supabase.from("blueprint_steps").update({ order_index: orderIndex }).eq("id", stepId).then(() => resolve());
       });
     const updates: Promise<void>[] = [
       ...colA.steps.map((s, i) => doUpdate(s.id, bOrders[i] ?? bOrders[0])),
@@ -1439,7 +1439,7 @@ export default function OverviewMode({
   async function deleteColumn(col: ColumnDef) {
     setColActionBusy(true);
     const stepIds = col.steps.map((s) => s.id);
-    await supabase.from("steps").delete().in("id", stepIds);
+    await supabase.from("blueprint_steps").delete().in("id", stepIds);
     setDeleteColConfirm(null);
     setColActionBusy(false);
     window.location.reload();
@@ -1549,11 +1549,11 @@ export default function OverviewMode({
       {/* ------------------------------------------------------------------ */}
       <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 bg-white border-b border-neutral-100 z-10">
         <Link
-          href={`/app/blueprints/${blueprint.id}`}
+          href={`/app/projects/${blueprint.project_id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors min-w-[120px]"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          {blueprint.title}
+          Project
         </Link>
 
         {/* Blueprint title — centred, inline editable */}
@@ -1568,7 +1568,7 @@ export default function OverviewMode({
                   if (e.key === "Enter") saveTitleEdit();
                   if (e.key === "Escape") {
                     setTitleEditing(false);
-                    setTitleValue(blueprint.title);
+                    setTitleValue(blueprint.name);
                   }
                 }}
                 className="text-sm font-semibold text-neutral-900 bg-transparent border-b-2 border-primary-400 focus:outline-none text-center px-1 min-w-[200px]"
@@ -1581,7 +1581,7 @@ export default function OverviewMode({
                 {titleSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Update"}
               </button>
               <button
-                onClick={() => { setTitleEditing(false); setTitleValue(blueprint.title); }}
+                onClick={() => { setTitleEditing(false); setTitleValue(blueprint.name); }}
                 className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -1633,7 +1633,7 @@ export default function OverviewMode({
             )}
           </button>
           <Link
-            href={`/app/blueprints/${blueprint.id}/capture`}
+            href={`/app/projects/${blueprint.project_id}`}
             className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
           >
             User Journey
@@ -2585,7 +2585,7 @@ export default function OverviewMode({
                     Edit this step&apos;s details in capture mode.
                   </p>
                   <Link
-                    href={`/app/blueprints/${blueprint.id}/capture`}
+                    href={`/app/projects/${blueprint.project_id}`}
                     className="inline-flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors"
                   >
                     Go to capture
