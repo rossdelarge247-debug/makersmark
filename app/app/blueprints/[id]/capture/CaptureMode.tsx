@@ -93,7 +93,6 @@ function groupStepsByActor(steps: Step[], primaryUser: string | null): { actor: 
 
 interface StoryboardStripProps {
   steps: Step[];
-  blueprint: UserJourney;
   editingStepId: string | null;
   scrollTrigger: number;
   visualMap: Map<string, Visual>;
@@ -109,7 +108,6 @@ interface StoryboardStripProps {
 
 function StoryboardStrip({
   steps,
-  blueprint,
   editingStepId,
   scrollTrigger,
   visualMap,
@@ -970,7 +968,6 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
       <div className="flex-shrink-0">
         <StoryboardStrip
           steps={steps}
-          blueprint={blueprint}
           editingStepId={capture.editingStepId}
           scrollTrigger={scrollTrigger}
           visualMap={visualMap}

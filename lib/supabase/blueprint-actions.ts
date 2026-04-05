@@ -34,6 +34,7 @@ export async function getBlueprintById(id: string): Promise<Blueprint | null> {
 
   if (error || !data) return null;
   // Strip the joined projects field from the returned object
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { projects: _p, ...blueprint } = data as Blueprint & { projects: unknown };
   return blueprint as Blueprint;
 }
