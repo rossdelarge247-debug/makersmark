@@ -157,7 +157,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-neutral-900">{bp.name}</p>
-                    <p className="text-xs text-neutral-500 mt-0.5">Created {formatDate(bp.created_at)}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      {bp.scenario ?? `Created ${formatDate(bp.created_at)}`}
+                    </p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold group-hover:bg-primary-700 transition-colors flex-shrink-0">
@@ -193,7 +195,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-neutral-900">{bp.name} <span className="text-xs text-neutral-400 ml-1">{blueprintTypeLabel(bp.type)}</span></p>
-                    <p className="text-xs text-neutral-500 mt-0.5">Created {formatDate(bp.created_at)}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      {bp.scenario ?? `Created ${formatDate(bp.created_at)}`}
+                    </p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-semibold group-hover:bg-amber-700 transition-colors flex-shrink-0">
