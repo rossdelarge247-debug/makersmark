@@ -156,7 +156,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                     <Grid3X3 className="w-5 h-5 text-primary-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-neutral-900">{bp.name}</p>
+                    <p className="text-sm font-semibold text-neutral-900">{bp.name || "As-is blueprint"}</p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {bp.scenario ?? `Created ${formatDate(bp.created_at)}`}
                     </p>
@@ -194,7 +194,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                     <Grid3X3 className="w-5 h-5 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-neutral-900">{bp.name} <span className="text-xs text-neutral-400 ml-1">{blueprintTypeLabel(bp.type)}</span></p>
+                    <p className="text-sm font-semibold text-neutral-900">{bp.name || "To-be blueprint"} <span className="text-xs text-neutral-400 ml-1">{blueprintTypeLabel(bp.type)}</span></p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {bp.scenario ?? `Created ${formatDate(bp.created_at)}`}
                     </p>

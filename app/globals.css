@@ -222,6 +222,7 @@
    resolve via the nearest ancestor that defines the variable.
    ----------------------------------------------------------------------- */
 [data-theme="studio"] main {
+  background-color: var(--background);
   --neutral-900: #F0EDE6;
   --neutral-800: #D4D0C8;
   --neutral-700: #A8A49C;

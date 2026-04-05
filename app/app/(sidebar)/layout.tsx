@@ -55,7 +55,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 bg-white">
         <div className="flex-1 px-8 py-8">{children}</div>
       </main>
     </div>
