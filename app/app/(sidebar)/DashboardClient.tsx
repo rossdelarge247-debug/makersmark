@@ -19,14 +19,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const isDraft = status === "draft";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isDraft ? "bg-neutral-100 text-neutral-600" : "bg-primary-100 text-primary-700"}`}>
-      {isDraft ? "Draft" : "Published"}
-    </span>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // New project modal
@@ -154,9 +146,8 @@ function ProjectCard({ blueprint, onDelete }: { blueprint: Blueprint; onDelete: 
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
       <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}>
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start mb-3">
           <h3 className="text-base font-semibold text-neutral-900 leading-snug line-clamp-2">{blueprint.title}</h3>
-          <StatusBadge status={blueprint.status} />
         </div>
         {blueprint.description && (
           <p className="text-sm text-neutral-500 leading-relaxed line-clamp-2 mb-3">{blueprint.description}</p>

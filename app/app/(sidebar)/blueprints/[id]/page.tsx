@@ -118,13 +118,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
         {/* Metadata row */}
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-            blueprint.status === "draft"
-              ? "bg-neutral-100 text-neutral-600"
-              : "bg-primary-100 text-primary-700"
-          }`}>
-            {blueprint.status === "draft" ? "Draft" : "Published"}
-          </span>
           <span className="inline-flex items-center gap-1.5 text-xs text-neutral-400">
             <Calendar className="w-3.5 h-3.5" />
             Created {formatDate(blueprint.created_at)}
