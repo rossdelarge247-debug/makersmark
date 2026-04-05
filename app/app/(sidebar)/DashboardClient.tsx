@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Zap, Grid3X3, FolderOpen, ArrowRight, X } from "lucide-react";
+import { Plus, Trash2, FolderOpen, ArrowRight, X } from "lucide-react";
 import { createBlueprint, deleteBlueprint } from "@/lib/supabase/blueprint-actions";
 import type { Blueprint } from "@/lib/supabase/blueprint-actions";
 
@@ -164,37 +164,28 @@ function ProjectCard({ blueprint, onDelete }: { blueprint: Blueprint; onDelete: 
         <p className="text-xs text-neutral-400">{formatDate(blueprint.created_at)}</p>
       </div>
 
-      {/* Quick-access entry buttons */}
-      <div className="px-5 py-3 border-t border-neutral-100 flex items-center gap-2">
+      {/* Actions */}
+      <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between gap-3">
         <button
-          onClick={() => router.push(`/app/blueprints/${blueprint.id}/capture`)}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+          onClick={() => router.push(`/app/blueprints/${blueprint.id}`)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold hover:bg-primary-700 transition-colors"
         >
-          <Zap className="w-3.5 h-3.5" />
-          User Journey
-        </button>
-        <button
-          onClick={() => router.push(`/app/blueprints/${blueprint.id}/overview`)}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 text-xs font-medium text-neutral-600 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-        >
-          <Grid3X3 className="w-3.5 h-3.5" />
-          Blueprint
+          View project
+          <ArrowRight className="w-3.5 h-3.5" />
         </button>
 
-        <div className="flex items-center">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <button onClick={handleDelete} disabled={isDeleting} className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors">
-                {isDeleting ? "Deleting…" : "Delete?"}
-              </button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors">No</button>
-            </div>
-          ) : (
-            <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors" aria-label="Delete project">
-              <Trash2 className="w-3.5 h-3.5" />
+        {confirmDelete ? (
+          <div className="flex items-center gap-2">
+            <button onClick={handleDelete} disabled={isDeleting} className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors">
+              {isDeleting ? "Deleting…" : "Delete?"}
             </button>
-          )}
-        </div>
+            <button onClick={() => setConfirmDelete(false)} className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors">No</button>
+          </div>
+        ) : (
+          <button onClick={handleDelete} className="p-1.5 rounded-lg text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors" aria-label="Delete project">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
