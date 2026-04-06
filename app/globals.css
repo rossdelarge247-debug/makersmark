@@ -294,30 +294,38 @@
 }
 
 /* =============================================================================
-   Default theme — dot grid canvas (blueprint grid only)
-   Graph paper applied ONLY to the scrollable blueprint grid area.
+   Default theme — graph paper lines (blueprint grid only)
+   Real graph paper lines applied ONLY to the scrollable blueprint grid.
    Dashboard and project hub remain flat grey (#F8FAFC).
 
-   CELL_W = 180px  → minor dot spacing = 18px (exactly 10 per column)
-   LABEL_W = 200px → offset so first dot lands at column left-edge (x=200)
+   Base unit: 20px
+   CELL_W = 200px = 10 units → column boundary = major line (every 10th)
+   CELL_H = 120px =  6 units → row boundary = major line (every 6th)
+   LABEL_W = 200px → background-position offset so lines start at column edge
 
-   CSS radial-gradient centres dots at TILE_CENTRE, not tile origin.
-   So background-position = target_x − tile_width/2.
-
-   Major dots (column boundaries, every 180px): position = 200 − 90 = 110px
-   Minor dots (every 18px):                     position = 200 − 9  = 191px
+   Minor lines: neutral-200 at 20px intervals
+   Major lines: the existing cell borders (border-neutral-200) are the major
+                lines — they sit on top and visually anchor the grid.
    ============================================================================= */
 
 [data-theme="default"] .blueprint-grid-canvas,
 :root .blueprint-grid-canvas {
   background-color: var(--neutral-50);
   background-image:
-    /* Major dots — at every 180px column boundary */
-    radial-gradient(circle, var(--neutral-500) 2px, transparent 2px),
-    /* Minor dots — every 18px (9 between each pair of major dots) */
-    radial-gradient(circle, var(--neutral-300) 1.5px, transparent 1.5px);
-  background-size: 180px 18px, 18px 18px;
-  background-position: 110px 0px, 191px 0px;
+    /* Vertical graph lines every 20px */
+    repeating-linear-gradient(
+      90deg,
+      var(--neutral-200) 0px, var(--neutral-200) 1px,
+      transparent 1px, transparent 20px
+    ),
+    /* Horizontal graph lines every 20px */
+    repeating-linear-gradient(
+      0deg,
+      var(--neutral-200) 0px, var(--neutral-200) 1px,
+      transparent 1px, transparent 20px
+    );
+  background-size: 20px 20px;
+  background-position: 200px 0px;
 }
 
 /* =============================================================================

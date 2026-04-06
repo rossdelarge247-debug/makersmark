@@ -1545,9 +1545,9 @@ export default function OverviewMode({
   // Render helpers
   // ---------------------------------------------------------------------------
 
-  const CELL_W = 180;
-  const CELL_H = 100;
-  const LABEL_W = 200;
+  const CELL_W = 200;   // 10 × 20px grid units — aligns columns to graph paper
+  const CELL_H = 120;   //  6 × 20px grid units — aligns rows to graph paper
+  const LABEL_W = 200;  // 10 × 20px grid units (unchanged)
 
   // ---------------------------------------------------------------------------
   // Render
@@ -1970,7 +1970,7 @@ export default function OverviewMode({
                   return (
                     <div
                       key={col.id}
-                      style={{ width: CELL_W, minWidth: CELL_W, height: 180 }}
+                      style={{ width: CELL_W, minWidth: CELL_W, height: CELL_H * 1.5 }}
                       className="flex-shrink-0 border-r border-violet-100 p-1.5"
                     >
                       {visual ? (
