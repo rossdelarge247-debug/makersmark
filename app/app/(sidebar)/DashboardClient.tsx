@@ -159,7 +159,7 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
         <p className="text-xs text-neutral-400">{formatDate(project.created_at)}</p>
       </div>
 
-      <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between gap-3">
+      <div className="px-5 py-3 border-t border-neutral-200 flex items-center justify-between gap-3">
         <button
           onClick={() => router.push(`/app/projects/${project.id}`)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold hover:bg-primary-700 transition-colors"

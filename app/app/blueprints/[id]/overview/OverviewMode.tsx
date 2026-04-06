@@ -324,7 +324,7 @@ function NotesSection({
   const getReplies = (noteId: string) => notes.filter((n) => n.parent_note_id === noteId);
 
   return (
-    <div className="pt-4 border-t border-neutral-100">
+    <div className="pt-4 border-t border-neutral-200">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
@@ -1548,7 +1548,7 @@ export default function OverviewMode({
       {/* ------------------------------------------------------------------ */}
       {/* Top nav */}
       {/* ------------------------------------------------------------------ */}
-      <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 bg-white border-b border-neutral-100 z-10">
+      <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 bg-white border-b border-neutral-200 z-10">
         <Link
           href={`/app/projects/${blueprint.project_id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors min-w-[120px]"
@@ -1630,7 +1630,7 @@ export default function OverviewMode({
       {/* ------------------------------------------------------------------ */}
       {/* Scenario strip */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-4 px-6 py-3 bg-white border-b border-neutral-100">
+      <div className="flex-shrink-0 flex items-center justify-between gap-4 px-6 py-3 bg-white border-b border-neutral-200">
 
         {/* Scenario label */}
         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">Scenario</p>
@@ -1680,7 +1680,7 @@ export default function OverviewMode({
       {/* ------------------------------------------------------------------ */}
       {/* Actor strip */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex-shrink-0 flex items-center gap-0 px-6 py-2.5 bg-white border-b border-neutral-100">
+      <div className="flex-shrink-0 flex items-center gap-0 px-6 py-2.5 bg-white border-b border-neutral-200">
         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap mr-4">Actors</p>
         {(() => {
           const actors: { name: string; role: "customer" | "frontstage" | "backstage" }[] = [];
@@ -1730,10 +1730,10 @@ export default function OverviewMode({
           >
             {/* Column header row */}
             <div className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-100" />
+              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-200" />
               <div
                 style={{ width: 148, minWidth: 148 }}
-                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-100 bg-white"
+                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-200 bg-white"
               >
                 <button
                   onClick={() => openFlyout({ type: "add-step" })}
@@ -1747,10 +1747,10 @@ export default function OverviewMode({
 
             {/* Swimlane rows — labels only, no cells yet */}
             {swimlanes.map((swimlane) => (
-              <div key={swimlane.id} className="flex border-b border-neutral-100">
+              <div key={swimlane.id} className="flex border-b border-neutral-200">
                 <div
                   style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H }}
-                  className="flex-shrink-0 flex items-start px-4 py-3 border-r border-neutral-100 bg-white sticky left-0 z-[5]"
+                  className="flex-shrink-0 flex items-start px-4 py-3 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
@@ -1758,7 +1758,7 @@ export default function OverviewMode({
                 </div>
                 <div
                   style={{ width: 148, minWidth: 148, height: CELL_H }}
-                  className="flex-shrink-0 border-r border-neutral-100 bg-neutral-50/30"
+                  className="flex-shrink-0 border-r border-neutral-200 bg-neutral-50/30"
                 />
               </div>
             ))}
@@ -1778,7 +1778,7 @@ export default function OverviewMode({
             {/* Column header row */}
             <div className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               {/* Corner cell */}
-              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-100" />
+              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-200" />
               {columns.map((col, i) => {
                 const primaryStep = col.steps.find((s) => {
                   const actor = (s.actor?.trim() || primaryUser).toLowerCase();
@@ -1795,7 +1795,7 @@ export default function OverviewMode({
                   <div
                     key={col.id}
                     style={{ width: CELL_W, minWidth: CELL_W }}
-                    className={`flex-shrink-0 px-3 py-2.5 border-r border-neutral-100 cursor-pointer transition-colors group/steph ${
+                    className={`flex-shrink-0 px-3 py-2.5 border-r border-neutral-200 cursor-pointer transition-colors group/steph ${
                       col.isServiceMoment
                         ? "bg-neutral-50 hover:bg-neutral-100"
                         : "bg-white hover:bg-neutral-50"
@@ -1921,7 +1921,7 @@ export default function OverviewMode({
               {/* Add step button — end of header row */}
               <div
                 style={{ width: 148, minWidth: 148 }}
-                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-100 bg-white"
+                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-200 bg-white"
               >
                 <button
                   onClick={() => openFlyout({ type: "add-step" })}
@@ -2020,11 +2020,11 @@ export default function OverviewMode({
                   <div className="flex-1 border-t-2 border-dashed border-neutral-300" />
                 </div>
               )}
-              <div className="flex border-b border-neutral-100 group/row">
+              <div className="flex border-b border-neutral-200 group/row">
                 {/* Swimlane label */}
                 <div
                   style={{ width: LABEL_W, minWidth: LABEL_W }}
-                  className="flex-shrink-0 flex items-start justify-between px-4 py-3 border-r border-neutral-100 bg-white sticky left-0 z-[5]"
+                  className="flex-shrink-0 flex items-start justify-between px-4 py-3 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
@@ -2069,7 +2069,7 @@ export default function OverviewMode({
                     <div
                       key={col.id}
                       style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
-                      className={`flex-shrink-0 border-r border-neutral-100 p-1.5 cursor-pointer group/cell relative ${
+                      className={`flex-shrink-0 border-r border-neutral-200 p-1.5 cursor-pointer group/cell relative ${
                         col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
                       }`}
                     >
@@ -2095,7 +2095,7 @@ export default function OverviewMode({
                             : cell?.content
                             ? "bg-white border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300 cursor-pointer"
                             : evidenceHint
-                            ? "bg-white/70 border-neutral-100 cursor-pointer hover:bg-white hover:border-neutral-200"
+                            ? "bg-white/70 border-neutral-200 cursor-pointer hover:bg-white hover:border-neutral-200"
                             : "bg-transparent border-transparent cursor-pointer hover:bg-white/60 hover:border-dashed hover:border-neutral-200"
                         }`}
                       >
@@ -2197,7 +2197,7 @@ export default function OverviewMode({
             })}
 
             {/* Add swimlane row */}
-            <div className="flex border-b border-neutral-100">
+            <div className="flex border-b border-neutral-200">
               <div
                 style={{ width: LABEL_W, minWidth: LABEL_W }}
                 className="flex-shrink-0 px-4 py-3 sticky left-0 bg-neutral-50"
@@ -2334,7 +2334,7 @@ export default function OverviewMode({
           }`}
         >
           {/* Fly-out header */}
-          <div className="flex-shrink-0 flex items-start justify-between px-6 pt-6 pb-4 border-b border-neutral-100">
+          <div className="flex-shrink-0 flex items-start justify-between px-6 pt-6 pb-4 border-b border-neutral-200">
             <div>
               {flyout.type === "cell" && (
                 <>
@@ -2475,7 +2475,7 @@ export default function OverviewMode({
                       <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mb-2">
                         Rest of this service moment
                       </p>
-                      <div className="rounded-xl border border-neutral-100 overflow-hidden">
+                      <div className="rounded-xl border border-neutral-200 overflow-hidden">
                         {otherSwimlanes.map((sl) => {
                           const slStep = stepForSwimlane(col, sl, primaryUser, actorRolesMap);
                           const slCell = cellMap.get(cellKey(slStep.id, sl.id));
@@ -2483,7 +2483,7 @@ export default function OverviewMode({
                           return (
                             <div
                               key={sl.id}
-                              className="px-3 py-2.5 border-b border-neutral-100 last:border-b-0 bg-white"
+                              className="px-3 py-2.5 border-b border-neutral-200 last:border-b-0 bg-white"
                             >
                               <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">
                                 {sl.name}
@@ -2565,7 +2565,7 @@ export default function OverviewMode({
                     </div>
                   )}
                 </div>
-                <div className="mt-2 pt-4 border-t border-neutral-100">
+                <div className="mt-2 pt-4 border-t border-neutral-200">
                   <p className="text-xs text-neutral-400 mb-3">
                     Edit this step&apos;s details in capture mode.
                   </p>
@@ -2603,7 +2603,7 @@ export default function OverviewMode({
             {/* ---- Actor detail ---- */}
             {flyout.type === "actor" && (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2 p-4 rounded-xl bg-neutral-50 border border-neutral-100">
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-neutral-50 border border-neutral-200">
                   <User className="w-8 h-8 text-neutral-300" />
                   <div>
                     <p className="text-sm font-medium text-neutral-700 capitalize">{flyout.name}</p>
@@ -2913,7 +2913,7 @@ export default function OverviewMode({
           </div>
 
           {/* Fly-out footer */}
-          <div className="flex-shrink-0 px-6 py-4 border-t border-neutral-100 flex items-center gap-3">
+          <div className="flex-shrink-0 px-6 py-4 border-t border-neutral-200 flex items-center gap-3">
             {flyout.type === "cell" && (
               <>
                 <button

@@ -9,9 +9,9 @@
 
 :root,
 [data-theme="default"] {
-  --background: #ffffff;
-  --foreground: #212529;
-  --surface:    #f8f9fa;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --surface:    #F1F5F9;
 
   /* Primary — slate-blue */
   --color-primary-50:  #f0f4ff;
@@ -26,24 +26,24 @@
   --color-primary-900: #2f3584;
   --color-primary-950: #1e1f50;
 
-  /* Neutral — cool grays */
-  --neutral-50:  #f8f9fa;
-  --neutral-100: #f1f3f5;
-  --neutral-200: #e9ecef;
-  --neutral-300: #dee2e6;
-  --neutral-400: #ced4da;
-  --neutral-500: #adb5bd;
-  --neutral-600: #868e96;
-  --neutral-700: #495057;
-  --neutral-800: #343a40;
-  --neutral-900: #212529;
-  --neutral-950: #0d0f12;
+  /* Neutral — high-contrast slate scale (WCAG AA compliant) */
+  --neutral-50:  #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;  /* visible borders */
+  --neutral-300: #CBD5E1;  /* dividers, placeholders */
+  --neutral-400: #94A3B8;  /* muted text — 4.6:1 on white */
+  --neutral-500: #64748B;  /* secondary text — 7.0:1 */
+  --neutral-600: #475569;  /* body/label text — 9.1:1 */
+  --neutral-700: #334155;  /* heading text — 13.0:1 */
+  --neutral-800: #1E293B;  /* strong heading — 16.0:1 */
+  --neutral-900: #0F172A;  /* near black — 21.0:1 */
+  --neutral-950: #020617;
 
   /* Shadows — soft, premium */
-  --shadow-card:       0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-elevated:   0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-modal:      0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-card:       0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.10), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-elevated:   0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-modal:      0 20px 25px -5px rgb(0 0 0 / 0.12), 0 8px 10px -6px rgb(0 0 0 / 0.06);
 }
 
 /* =============================================================================
@@ -291,6 +291,32 @@
   background: transparent;
   box-shadow: none;
   border-top-color: var(--color-primary-400);
+}
+
+/* =============================================================================
+   Default theme — dot grid canvas
+   Applies a subtle Miro/Mural-style dot grid to canvas backgrounds.
+   bg-background (layout shell, main content) and bg-neutral-50 (blueprint canvas)
+   both show the grid. White cards/cells float on top.
+   ============================================================================= */
+
+/* Apply dot grid to canvas-level background containers */
+:root .bg-background,
+[data-theme="default"] .bg-background,
+:root .bg-neutral-50,
+[data-theme="default"] .bg-neutral-50 {
+  background-image: radial-gradient(circle, var(--neutral-300) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}
+
+/* Strip dot grid from form elements so inputs remain clean */
+:root input,
+:root textarea,
+:root select,
+[data-theme="default"] input,
+[data-theme="default"] textarea,
+[data-theme="default"] select {
+  background-image: none;
 }
 
 /* =============================================================================

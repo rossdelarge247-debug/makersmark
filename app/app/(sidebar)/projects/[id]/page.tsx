@@ -231,7 +231,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* ------------------------------------------------------------------ */}
       {/* SECONDARY — User Journeys                                            */}
       {/* ------------------------------------------------------------------ */}
-      <div className="py-6 border-t border-neutral-100">
+      <div className="py-6 border-t border-neutral-200">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-neutral-400" />
           <h2 className="section-label text-sm text-neutral-700">User Journeys</h2>
@@ -275,7 +275,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* ------------------------------------------------------------------ */}
       {/* TERTIARY — Personas                                                  */}
       {/* ------------------------------------------------------------------ */}
-      <div className="py-6 border-t border-neutral-100">
+      <div className="py-6 border-t border-neutral-200">
         <div className="flex items-center gap-2 mb-3">
           <Users className="w-3.5 h-3.5 text-neutral-400" />
           <h2 className="label-caps text-neutral-500">Personas</h2>
@@ -312,9 +312,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* ------------------------------------------------------------------ */}
       {/* Future capabilities                                                  */}
       {/* ------------------------------------------------------------------ */}
-      <div className="mt-6 pt-6 border-t-2 border-neutral-100">
+      <div className="mt-6 pt-6 border-t-2 border-neutral-200">
         <p className="label-caps text-neutral-300 mb-4">Coming soon</p>
-        <div className="bg-neutral-50 rounded-xl border border-neutral-100 divide-y divide-neutral-100 overflow-hidden">
+        <div className="bg-neutral-50 rounded-xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3.5 text-neutral-400">
             <FileText className="w-4 h-4 flex-shrink-0 text-neutral-300" />
             <div className="flex-1">

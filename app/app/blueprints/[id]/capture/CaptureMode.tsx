@@ -147,7 +147,7 @@ function StoryboardStrip({
   }, []); // mount only
 
   return (
-    <div className="w-full bg-white border-b border-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="w-full bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       {/* Strip title */}
       <div className="px-6 pt-3 pb-1 flex items-center gap-2">
         <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
@@ -204,7 +204,7 @@ function StoryboardStrip({
                         {!step ? (
                           <div
                             style={{ width: CARD_W }}
-                            className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-100 bg-neutral-50/30"
+                            className="flex-shrink-0 h-[80px] rounded-lg border border-dashed border-neutral-200 bg-neutral-50/30"
                           />
                         ) : (
                           <div
@@ -945,7 +945,7 @@ export default function CaptureMode({ journey: blueprint, initialSteps, initialV
       {/* ------------------------------------------------------------------ */}
       {/* Minimal top nav */}
       {/* ------------------------------------------------------------------ */}
-      <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-100">
+      <nav className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-200">
         <Link
           href={`/app/projects/${blueprint.project_id}`}
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
