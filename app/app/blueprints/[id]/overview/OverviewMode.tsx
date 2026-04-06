@@ -1545,7 +1545,7 @@ export default function OverviewMode({
   // Render helpers
   // ---------------------------------------------------------------------------
 
-  const CELL_W         = 200;  // 10 × 20px — column width
+  const CELL_W         = 240;  // 12 × 20px — column width
   const CELL_H         = 160;  //  8 × 20px — swimlane row height (strict)
   const LABEL_W        = 200;  // 10 × 20px — swimlane label column
   const STEP_HEADER_H  = 160;  //  8 × 20px — fixed column-header row height
