@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Check, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -15,6 +16,7 @@ export default function InlineTitle({ projectId, initialTitle }: InlineTitleProp
   const [draft, setDraft] = useState(initialTitle);
   const [isPending, setIsPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   function handleEdit() {
     setDraft(title);
@@ -39,6 +41,7 @@ export default function InlineTitle({ projectId, initialTitle }: InlineTitleProp
     setTitle(trimmed);
     setIsPending(false);
     setIsEditing(false);
+    router.refresh();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
