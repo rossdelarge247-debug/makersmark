@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -530,6 +531,7 @@ export default function OverviewMode({
   initialVisuals,
 }: OverviewModeProps) {
   const supabase = createClient();
+  const router = useRouter();
 
   // ---- Core state ----
   const [steps, setSteps] = useState<Step[]>(initialSteps);
@@ -747,18 +749,22 @@ export default function OverviewMode({
 
   async function saveTitleEdit() {
     const trimmed = titleValue.trim();
-    if (!trimmed || trimmed === defaultTitle) {
+    if (!trimmed) {
       setTitleEditing(false);
       setTitleValue(defaultTitle);
       return;
     }
+    // Allow saving even if it matches defaultTitle (so user can explicitly name it)
     setTitleSaving(true);
     const now = new Date().toISOString();
-    await supabase.from("blueprints").update({ name: trimmed, updated_at: now }).eq("id", blueprint.id);
-    setLastEdited(now);
+    const { error } = await supabase.from("blueprints").update({ name: trimmed, updated_at: now }).eq("id", blueprint.id);
+    if (!error) {
+      setTitleValue(trimmed);
+      setLastEdited(now);
+      router.refresh();
+    }
     setTitleSaving(false);
     setTitleEditing(false);
-    setTitleValue(trimmed);
   }
 
   async function saveScenarioEdit() {

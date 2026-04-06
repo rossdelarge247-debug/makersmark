@@ -294,25 +294,30 @@
 }
 
 /* =============================================================================
-   Default theme — dot grid canvas (blueprint only)
-   Miro/Mural-style graph paper applied ONLY to the blueprint grid.
+   Default theme — dot grid canvas (blueprint grid only)
+   Graph paper applied ONLY to the scrollable blueprint grid area.
    Dashboard and project hub remain flat grey (#F8FAFC).
 
-   CELL_W = 180px → minor dot spacing = 18px (10 per column)
-   LABEL_W = 200px → background-position offset so dots align to column edges
-   Major (column boundary) dots repeat every 180px; minor every 18px.
+   CELL_W = 180px  → minor dot spacing = 18px (exactly 10 per column)
+   LABEL_W = 200px → offset so first dot lands at column left-edge (x=200)
+
+   CSS radial-gradient centres dots at TILE_CENTRE, not tile origin.
+   So background-position = target_x − tile_width/2.
+
+   Major dots (column boundaries, every 180px): position = 200 − 90 = 110px
+   Minor dots (every 18px):                     position = 200 − 9  = 191px
    ============================================================================= */
 
 [data-theme="default"] .blueprint-grid-canvas,
 :root .blueprint-grid-canvas {
   background-color: var(--neutral-50);
   background-image:
-    /* Major dots — darker, at every column boundary (180px) */
-    radial-gradient(circle, var(--neutral-400) 2px, transparent 2px),
-    /* Minor dots — lighter, every 18px */
-    radial-gradient(circle, var(--neutral-300) 1.2px, transparent 1.2px);
+    /* Major dots — at every 180px column boundary */
+    radial-gradient(circle, var(--neutral-500) 2px, transparent 2px),
+    /* Minor dots — every 18px (9 between each pair of major dots) */
+    radial-gradient(circle, var(--neutral-300) 1.5px, transparent 1.5px);
   background-size: 180px 18px, 18px 18px;
-  background-position: 200px 0px, 200px 0px;
+  background-position: 110px 0px, 191px 0px;
 }
 
 /* =============================================================================
