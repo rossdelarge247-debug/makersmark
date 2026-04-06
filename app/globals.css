@@ -294,29 +294,25 @@
 }
 
 /* =============================================================================
-   Default theme — dot grid canvas
-   Applies a subtle Miro/Mural-style dot grid to canvas backgrounds.
-   bg-background (layout shell, main content) and bg-neutral-50 (blueprint canvas)
-   both show the grid. White cards/cells float on top.
+   Default theme — dot grid canvas (blueprint only)
+   Miro/Mural-style graph paper applied ONLY to the blueprint grid.
+   Dashboard and project hub remain flat grey (#F8FAFC).
+
+   CELL_W = 180px → minor dot spacing = 18px (10 per column)
+   LABEL_W = 200px → background-position offset so dots align to column edges
+   Major (column boundary) dots repeat every 180px; minor every 18px.
    ============================================================================= */
 
-/* Apply dot grid to canvas-level background containers */
-:root .bg-background,
-[data-theme="default"] .bg-background,
-:root .bg-neutral-50,
-[data-theme="default"] .bg-neutral-50 {
-  background-image: radial-gradient(circle, var(--neutral-300) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-}
-
-/* Strip dot grid from form elements so inputs remain clean */
-:root input,
-:root textarea,
-:root select,
-[data-theme="default"] input,
-[data-theme="default"] textarea,
-[data-theme="default"] select {
-  background-image: none;
+[data-theme="default"] .blueprint-grid-canvas,
+:root .blueprint-grid-canvas {
+  background-color: var(--neutral-50);
+  background-image:
+    /* Major dots — darker, at every column boundary (180px) */
+    radial-gradient(circle, var(--neutral-400) 2px, transparent 2px),
+    /* Minor dots — lighter, every 18px */
+    radial-gradient(circle, var(--neutral-300) 1.2px, transparent 1.2px);
+  background-size: 180px 18px, 18px 18px;
+  background-position: 200px 0px, 200px 0px;
 }
 
 /* =============================================================================

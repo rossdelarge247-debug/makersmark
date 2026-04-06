@@ -553,7 +553,10 @@ export default function OverviewMode({
 
   // ---- Title editing ----
   const [titleEditing, setTitleEditing] = useState(false);
-  const defaultTitle = blueprint.name || (blueprint.type === "as_is" ? "As-is blueprint" : "To-be blueprint");
+  const legacyLabel = blueprint.name === "As-is" || blueprint.name === "To-be";
+  const defaultTitle = (!blueprint.name || legacyLabel)
+    ? (blueprint.type === "as_is" ? "As-is blueprint" : "To-be blueprint")
+    : blueprint.name;
   const [titleValue, setTitleValue] = useState(defaultTitle);
   const [titleSaving, setTitleSaving] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -755,6 +758,7 @@ export default function OverviewMode({
     setLastEdited(now);
     setTitleSaving(false);
     setTitleEditing(false);
+    setTitleValue(trimmed);
   }
 
   async function saveScenarioEdit() {
@@ -1582,7 +1586,7 @@ export default function OverviewMode({
                 {titleSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Update"}
               </button>
               <button
-                onClick={() => { setTitleEditing(false); setTitleValue(blueprint.name); }}
+                onClick={() => { setTitleEditing(false); setTitleValue(defaultTitle); }}
                 className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -1770,7 +1774,7 @@ export default function OverviewMode({
       {/* Blueprint grid */}
       {/* ------------------------------------------------------------------ */}
       {steps.length > 0 && (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto blueprint-grid-canvas">
           <div
             style={{ minWidth: `${LABEL_W + columns.length * CELL_W + 48}px` }}
             className="pb-10"
