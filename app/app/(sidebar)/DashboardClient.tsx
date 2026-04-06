@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, FolderOpen, ArrowRight, X } from "lucide-react";
+import { Plus, Trash2, FolderOpen, ArrowRight, X, Building2 } from "lucide-react";
 import { createProject, deleteProject } from "@/lib/supabase/project-actions";
 import type { Project } from "@/lib/types/blueprint";
 
@@ -30,6 +30,7 @@ interface NewProjectModalProps {
 
 function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
   const [name, setName] = useState("");
+  const [organisation, setOrganisation] = useState("");
   const [description, setDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -39,7 +40,7 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
   async function handleCreate() {
     if (!name.trim()) return;
     setIsCreating(true);
-    const id = await createProject(name.trim(), description.trim());
+    const id = await createProject(name.trim(), description.trim(), organisation.trim() || undefined);
     onCreated(id);
   }
 
@@ -75,6 +76,19 @@ function NewProjectModal({ onClose, onCreated }: NewProjectModalProps) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. GP appointment booking, Home insurance claim…"
+                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                  Organisation
+                  <span className="ml-1.5 text-xs font-normal text-neutral-400">optional</span>
+                </label>
+                <input
+                  type="text"
+                  value={organisation}
+                  onChange={(e) => setOrganisation(e.target.value)}
+                  placeholder="e.g. NHS Digital, Cabinet Office…"
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
                 />
               </div>
@@ -130,7 +144,15 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
       <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/projects/${project.id}`)}>
-        <span className="display-num block mb-2">{String(index + 1).padStart(2, "0")}</span>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <span className="display-num">{String(index + 1).padStart(2, "0")}</span>
+          {project.organisation && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-neutral-400 mt-1">
+              <Building2 className="w-3 h-3 flex-shrink-0" />
+              {project.organisation}
+            </span>
+          )}
+        </div>
         <div className="flex items-start mb-3">
           <h3 className="section-label text-base text-neutral-900 leading-snug line-clamp-2">{project.title}</h3>
         </div>

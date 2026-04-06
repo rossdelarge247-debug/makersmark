@@ -7,6 +7,7 @@ export interface Project {
   user_id: string;
   title: string;
   description: string | null;
+  organisation: string | null;
   status: string;
   lifecycle_stages: string[] | null;
   created_at: string;

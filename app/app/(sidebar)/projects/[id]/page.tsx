@@ -10,6 +10,7 @@ import { getJourneysForProject } from "@/lib/supabase/journey-actions";
 import type { Blueprint, UserJourney } from "@/lib/types/blueprint";
 import InlineTitle from "@/components/projects/InlineTitle";
 import InlineDescription from "@/components/projects/InlineDescription";
+import InlineOrganisation from "@/components/projects/InlineOrganisation";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
@@ -114,6 +115,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* ------------------------------------------------------------------ */}
       <div className="mb-10">
         <InlineTitle projectId={id} initialTitle={project.title} />
+
+        <div className="mt-3">
+          <InlineOrganisation projectId={id} initialOrganisation={project.organisation} />
+        </div>
 
         <div className="mt-6">
           <InlineDescription projectId={id} initialDescription={project.description} />

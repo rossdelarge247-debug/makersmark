@@ -27,7 +27,8 @@ const DEFAULT_SWIMLANES = [
  */
 export async function createProject(
   title?: string,
-  description?: string
+  description?: string,
+  organisation?: string
 ): Promise<string> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -40,6 +41,7 @@ export async function createProject(
       user_id: user.id,
       title: title?.trim() || "Untitled project",
       description: description?.trim() || null,
+      organisation: organisation?.trim() || null,
       status: "draft",
     })
     .select("id")
@@ -105,7 +107,7 @@ export async function getProjectById(id: string): Promise<Project> {
  */
 export async function updateProjectMeta(
   id: string,
-  fields: Partial<Pick<Project, "title" | "description" | "status" | "lifecycle_stages">>
+  fields: Partial<Pick<Project, "title" | "description" | "organisation" | "status" | "lifecycle_stages">>
 ): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase
