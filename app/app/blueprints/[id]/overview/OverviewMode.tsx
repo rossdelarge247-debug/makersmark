@@ -1545,9 +1545,11 @@ export default function OverviewMode({
   // Render helpers
   // ---------------------------------------------------------------------------
 
-  const CELL_W = 200;   // 10 × 20px grid units — aligns columns to graph paper
-  const CELL_H = 120;   //  6 × 20px grid units — aligns rows to graph paper
-  const LABEL_W = 200;  // 10 × 20px grid units (unchanged)
+  const CELL_W         = 200;  // 10 × 20px — column width
+  const CELL_H         = 120;  //  6 × 20px — swimlane row min-height
+  const LABEL_W        = 200;  // 10 × 20px — swimlane label column
+  const STEP_HEADER_H  = 160;  //  8 × 20px — fixed column-header row height
+  const NOTATION_H     = 40;   //  2 × 20px — Line of Interaction / Visibility
 
   // ---------------------------------------------------------------------------
   // Render
@@ -1760,7 +1762,7 @@ export default function OverviewMode({
               <div key={swimlane.id} className="flex border-b border-neutral-200">
                 <div
                   style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H }}
-                  className="flex-shrink-0 flex items-start px-4 py-3 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
+                  className="flex-shrink-0 flex items-start px-4 py-5 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
@@ -1788,7 +1790,7 @@ export default function OverviewMode({
             {/* Column header row */}
             <div className="sticky top-0 z-10 flex bg-white border-b border-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               {/* Corner cell */}
-              <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="flex-shrink-0 px-4 py-3 border-r border-neutral-200" />
+              <div style={{ width: LABEL_W, minWidth: LABEL_W, height: STEP_HEADER_H }} className="flex-shrink-0 border-r border-neutral-200" />
               {columns.map((col, i) => {
                 const primaryStep = col.steps.find((s) => {
                   const actor = (s.actor?.trim() || primaryUser).toLowerCase();
@@ -1804,8 +1806,8 @@ export default function OverviewMode({
                 return (
                   <div
                     key={col.id}
-                    style={{ width: CELL_W, minWidth: CELL_W }}
-                    className={`flex-shrink-0 px-3 py-2.5 border-r border-neutral-200 cursor-pointer transition-colors group/steph ${
+                    style={{ width: CELL_W, minWidth: CELL_W, height: STEP_HEADER_H }}
+                    className={`flex-shrink-0 px-3 pt-5 pb-0 overflow-hidden border-r border-neutral-200 cursor-pointer transition-colors group/steph ${
                       col.isServiceMoment
                         ? "bg-neutral-50 hover:bg-neutral-100"
                         : "bg-white hover:bg-neutral-50"
@@ -1930,8 +1932,8 @@ export default function OverviewMode({
 
               {/* Add step button — end of header row */}
               <div
-                style={{ width: 148, minWidth: 148 }}
-                className="flex-shrink-0 flex items-center justify-center px-3 py-2.5 border-r border-neutral-200 bg-white"
+                style={{ width: 160, minWidth: 160, height: STEP_HEADER_H }}
+                className="flex-shrink-0 flex items-center justify-center px-3 border-r border-neutral-200 bg-white"
               >
                 <button
                   onClick={() => openFlyout({ type: "add-step" })}
@@ -2017,7 +2019,10 @@ export default function OverviewMode({
               <div key={swimlane.id}>
               {/* Notation divider */}
               {notation && (
-                <div className="flex items-center px-4 py-0" style={{ minWidth: `${LABEL_W + columns.length * CELL_W + 48}px` }}>
+                <div
+                  className="flex items-center px-4"
+                  style={{ minWidth: `${LABEL_W + columns.length * CELL_W + 48}px`, height: NOTATION_H }}
+                >
                   <div className="flex-1 border-t-2 border-dashed border-neutral-300" />
                   <div className="flex-shrink-0 mx-3 flex flex-col items-center">
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">
@@ -2034,7 +2039,7 @@ export default function OverviewMode({
                 {/* Swimlane label */}
                 <div
                   style={{ width: LABEL_W, minWidth: LABEL_W }}
-                  className="flex-shrink-0 flex items-start justify-between px-4 py-3 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
+                  className="flex-shrink-0 flex items-start justify-between px-4 py-5 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
                     {swimlane.name}
@@ -2079,7 +2084,7 @@ export default function OverviewMode({
                     <div
                       key={col.id}
                       style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
-                      className={`flex-shrink-0 border-r border-neutral-200 p-1.5 cursor-pointer group/cell relative ${
+                      className={`flex-shrink-0 border-r border-neutral-200 p-[10px] cursor-pointer group/cell relative ${
                         col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
                       }`}
                     >
@@ -2144,7 +2149,7 @@ export default function OverviewMode({
                             </div>
                           </>
                         ) : (
-                          <div className="flex items-center justify-center" style={{ minHeight: CELL_H - 24 }}>
+                          <div className="flex items-center justify-center" style={{ minHeight: CELL_H - 20 }}>
                             <div className="w-6 h-6 rounded-full border border-dashed border-neutral-200 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
                               <Plus className="w-3 h-3 text-neutral-400" />
                             </div>
@@ -2210,7 +2215,7 @@ export default function OverviewMode({
             <div className="flex border-b border-neutral-200">
               <div
                 style={{ width: LABEL_W, minWidth: LABEL_W }}
-                className="flex-shrink-0 px-4 py-3 sticky left-0 bg-neutral-50"
+                className="flex-shrink-0 px-4 py-5 sticky left-0 bg-neutral-50"
               >
                 <button
                   onClick={() => openFlyout({ type: "add-swimlane" })}

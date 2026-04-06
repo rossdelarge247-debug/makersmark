@@ -315,13 +315,13 @@
     /* Vertical graph lines every 20px */
     repeating-linear-gradient(
       90deg,
-      var(--neutral-200) 0px, var(--neutral-200) 1px,
+      rgba(148, 163, 184, 0.25) 0px, rgba(148, 163, 184, 0.25) 1px,
       transparent 1px, transparent 20px
     ),
     /* Horizontal graph lines every 20px */
     repeating-linear-gradient(
       0deg,
-      var(--neutral-200) 0px, var(--neutral-200) 1px,
+      rgba(148, 163, 184, 0.25) 0px, rgba(148, 163, 184, 0.25) 1px,
       transparent 1px, transparent 20px
     );
   background-size: 20px 20px;
