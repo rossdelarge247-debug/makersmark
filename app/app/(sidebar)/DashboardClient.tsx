@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, FolderOpen, ArrowRight, X, Building2 } from "lucide-react";
+import { Plus, Trash2, FolderOpen, ArrowRight, X } from "lucide-react";
 import { createProject, deleteProject } from "@/lib/supabase/project-actions";
 import type { Project } from "@/lib/types/blueprint";
 
@@ -144,13 +144,10 @@ function ProjectCard({ project, index, onDelete }: { project: Project; index: nu
   return (
     <div className="bg-white rounded-xl border border-neutral-200 shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col">
       <div className="flex-1 p-5 cursor-pointer" onClick={() => router.push(`/app/projects/${project.id}`)}>
-        <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="flex items-baseline gap-3 mb-2">
           <span className="display-num">{String(index + 1).padStart(2, "0")}</span>
           {project.organisation && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-neutral-400 mt-1">
-              <Building2 className="w-3 h-3 flex-shrink-0" />
-              {project.organisation}
-            </span>
+            <span className="display-num text-neutral-300">{project.organisation}</span>
           )}
         </div>
         <div className="flex items-start mb-3">
