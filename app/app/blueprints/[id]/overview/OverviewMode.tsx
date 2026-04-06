@@ -2083,7 +2083,7 @@ export default function OverviewMode({
                   return (
                     <div
                       key={col.id}
-                      style={{ width: CELL_W, minWidth: CELL_W, height: CELL_H, overflow: "hidden" }}
+                      style={{ width: CELL_W, minWidth: CELL_W, height: CELL_H }}
                       className={`flex-shrink-0 border-r border-neutral-200 p-5 cursor-pointer group/cell relative ${
                         col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
                       }`}
@@ -2100,7 +2100,7 @@ export default function OverviewMode({
                         onMouseEnter={() => { if (dragging && dragging.k !== k) setDragOver(k); }}
                         onMouseLeave={() => { if (dragOver === k) setDragOver(null); }}
                         onClick={() => { if (didDragRef.current) return; openFlyout({ type: "cell", step, swimlane }); }}
-                        className={`relative rounded-xl border px-3 py-2.5 h-full overflow-hidden transition-all duration-150 select-none ${
+                        className={`relative rounded-xl border px-3 py-2.5 min-h-full transition-all duration-150 select-none ${
                           isDragSource
                             ? "bg-white/40 border-dashed border-neutral-300 opacity-40"
                             : isDragTarget
