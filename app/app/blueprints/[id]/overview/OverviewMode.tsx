@@ -1546,7 +1546,7 @@ export default function OverviewMode({
   // ---------------------------------------------------------------------------
 
   const CELL_W         = 200;  // 10 × 20px — column width
-  const CELL_H         = 120;  //  6 × 20px — swimlane row min-height
+  const CELL_H         = 160;  //  8 × 20px — swimlane row height (strict)
   const LABEL_W        = 200;  // 10 × 20px — swimlane label column
   const STEP_HEADER_H  = 160;  //  8 × 20px — fixed column-header row height
   const NOTATION_H     = 40;   //  2 × 20px — Line of Interaction / Visibility
@@ -1761,7 +1761,7 @@ export default function OverviewMode({
             {swimlanes.map((swimlane) => (
               <div key={swimlane.id} className="flex border-b border-neutral-200">
                 <div
-                  style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H }}
+                  style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H, overflow: "hidden" }}
                   className="flex-shrink-0 flex items-start px-4 py-5 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
@@ -1769,7 +1769,7 @@ export default function OverviewMode({
                   </span>
                 </div>
                 <div
-                  style={{ width: 148, minWidth: 148, height: CELL_H }}
+                  style={{ width: 160, minWidth: 160, height: CELL_H }}
                   className="flex-shrink-0 border-r border-neutral-200 bg-neutral-50/30"
                 />
               </div>
@@ -2038,7 +2038,7 @@ export default function OverviewMode({
               <div className="flex border-b border-neutral-200 group/row">
                 {/* Swimlane label */}
                 <div
-                  style={{ width: LABEL_W, minWidth: LABEL_W }}
+                  style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H, overflow: "hidden" }}
                   className="flex-shrink-0 flex items-start justify-between px-4 py-5 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
@@ -2083,8 +2083,8 @@ export default function OverviewMode({
                   return (
                     <div
                       key={col.id}
-                      style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
-                      className={`flex-shrink-0 border-r border-neutral-200 p-[10px] cursor-pointer group/cell relative ${
+                      style={{ width: CELL_W, minWidth: CELL_W, height: CELL_H, overflow: "hidden" }}
+                      className={`flex-shrink-0 border-r border-neutral-200 p-5 cursor-pointer group/cell relative ${
                         col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
                       }`}
                     >
@@ -2100,7 +2100,7 @@ export default function OverviewMode({
                         onMouseEnter={() => { if (dragging && dragging.k !== k) setDragOver(k); }}
                         onMouseLeave={() => { if (dragOver === k) setDragOver(null); }}
                         onClick={() => { if (didDragRef.current) return; openFlyout({ type: "cell", step, swimlane }); }}
-                        className={`relative rounded-xl border px-3 py-2.5 h-full transition-all duration-150 select-none ${
+                        className={`relative rounded-xl border px-3 py-2.5 h-full overflow-hidden transition-all duration-150 select-none ${
                           isDragSource
                             ? "bg-white/40 border-dashed border-neutral-300 opacity-40"
                             : isDragTarget
@@ -2149,7 +2149,7 @@ export default function OverviewMode({
                             </div>
                           </>
                         ) : (
-                          <div className="flex items-center justify-center" style={{ minHeight: CELL_H - 20 }}>
+                          <div className="flex items-center justify-center h-full">
                             <div className="w-6 h-6 rounded-full border border-dashed border-neutral-200 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
                               <Plus className="w-3 h-3 text-neutral-400" />
                             </div>
