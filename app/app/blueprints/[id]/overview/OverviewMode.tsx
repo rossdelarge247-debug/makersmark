@@ -2038,7 +2038,7 @@ export default function OverviewMode({
               <div className="flex border-b border-neutral-200 group/row">
                 {/* Swimlane label */}
                 <div
-                  style={{ width: LABEL_W, minWidth: LABEL_W, height: CELL_H, overflow: "hidden" }}
+                  style={{ width: LABEL_W, minWidth: LABEL_W, minHeight: CELL_H }}
                   className="flex-shrink-0 flex items-start justify-between px-4 py-5 border-r border-neutral-200 bg-white sticky left-0 z-[5]"
                 >
                   <span className="micro-label text-neutral-500 leading-snug pt-0.5">
@@ -2083,7 +2083,7 @@ export default function OverviewMode({
                   return (
                     <div
                       key={col.id}
-                      style={{ width: CELL_W, minWidth: CELL_W, height: CELL_H }}
+                      style={{ width: CELL_W, minWidth: CELL_W, minHeight: CELL_H }}
                       className={`flex-shrink-0 border-r border-neutral-200 p-5 cursor-pointer group/cell relative ${
                         col.isServiceMoment ? "bg-neutral-100/60" : "bg-neutral-50/40"
                       }`}
